@@ -1,0 +1,35 @@
+{
+    "id": "24a9d508-0a5f-4022-8b5c-7c537f27d5d0",
+    "timestamp": "2017-09-14T14:04:47.223Z",
+    "lang": "en",
+    "result": {
+      "source": "agent",
+      "resolvedQuery": "give me the offers",
+      "action": "getOffers",
+      "actionIncomplete": false,
+      "parameters": {},
+      "contexts": [],
+      "metadata": {
+        "intentId": "b740809b-aaea-4c77-b191-b04d2a2263dd",
+        "webhookUsed": "true",
+        "webhookForSlotFillingUsed": "false",
+        "intentName": "Give me the offers"
+      },
+      "fulfillment": {
+        "speech": "",
+        "messages": [
+          {
+            "type": 0,
+            "speech": ""
+          }
+        ]
+      },
+      "score": 1
+    },
+    "status": {
+      "code": 206,
+      "errorType": "partial_content",
+      "errorDetails": "Webhook call failed. Error: 400 Bad Request"
+    },
+    "sessionId": "1daea3d9-dc1b-46dc-aeb0-b675f2738e92"
+  }

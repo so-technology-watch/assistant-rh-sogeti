@@ -65,7 +65,7 @@ function getOffersPages(URL_list_offers) {
                 .each((i, el) => {
                     list_url_pages.push(el.attribs['href']);
                 });
-            return list_url_pages;
+            return list_url_pages.slice(0,1); //HACK Remove slice
         });
 }
 
@@ -76,26 +76,66 @@ getOffersUrl(URL_list_offers)
 .then(list => {
     console.log(list.length);
     list.forEach(offer => {
-        offer.getContent();
+        offer.getContent().then(data => {
+            offer.data = data;
+        });
     })
 });
 
 class Offer {
     constructor (url){
-        this.url = "https://sogetifrance-recrute.talent-soft.com" + url
+        this.url = "https://sogetifrance-recrute.talent-soft.com" + url;
+        this.title = "";
+
     }
 
     getContent(){
-        return getHtml(this.url)
-        .catch(err => {
-            console.log(err);
-        })
-        .then(html =>{
-            var $ = cheerio.load(html);
 
+        return getHtml(this.url).then(html => {
+            this.html = html;
+
+            var $ = cheerio.load(this.html);
+    
             this.title = $('#titrepages').first().find('h1 span').first().text().trim();
-            console.log(this.title);
-        })
+    
+            var content = $('#contenu-ficheoffre').first();
+    
+            var dataDictionary = {};
+
+
+            var list = content.find('h3').slice(1)
+            .each((i,el) => {
+                // console.log(el.children[0].data.trim() + " : " + el.next.children[0].data.trim());
+                let key = el.children[0].data.trim();
+                var next = el.next;
+                var value = "";
+                while (next.children.length < 1){
+                    next = next.next
+                }
+                if (next.children.length == 1){
+                    value = next.children[0].data.trim();
+                }
+                else {
+                    value = next.children.reduce((prev, curr) =>{
+                        var prevText = prev;
+                        if (typeof(prev) != typeof("")){
+                            prevText = prev.type == "text" ? prev.data : "";
+                        }
+                        
+                        var currText = curr.type == "text" ? curr.data : "";
+
+                        return prevText + "\n" + currText;
+                    });
+                }
+                dataDictionary[key] = value;
+                
+            });
+
+            return dataDictionary;
+
+        });
+
+
     }
 
 }

@@ -1,0 +1,14 @@
+{
+  "name": "node-web-scraper",
+  "version": "0.0.1",
+  "description": "Scrape the web.",
+  "main": "parser.js",
+  "author": "Arthur Maury",
+  "dependencies": {
+    "request": "latest",
+    "cheerio": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^2.5.2"
+  }
+}

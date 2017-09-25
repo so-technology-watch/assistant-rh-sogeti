@@ -1,5 +1,13 @@
 {
-    "name":"chatbot-rh-sogeti",
-    "version":"1.0",
-    "description":"Chatbot pour présenter les offres RH Sogeti"
+  "name": "chatbot-rh-sogeti",
+  "version": "1.0",
+  "description": "Chatbot pour présenter les offres RH Sogeti",
+  "dependencies": {
+    "actions-on-google": "latest",
+    "fs": "latest",
+    "promise": "^8.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^2.5.2"
+  }
 }

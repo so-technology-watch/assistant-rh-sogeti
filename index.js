@@ -6,7 +6,7 @@ const GETOFFERS_MAP = "getOffers";
 const SUJET_Parameter = 'Sujet';
 
 function getOffers(appApiAiApp) {
-  var sujet = appApiAiApp.getArgument(SUJET_Parameter);
+  // var sujet = appApiAiApp.getArgument(SUJET_Parameter);
   var item1 = {
     title:"title", 
     description:"description",

@@ -65,22 +65,9 @@ function getOffersPages(URL_list_offers) {
                 .each((i, el) => {
                     list_url_pages.push(el.attribs['href']);
                 });
-            return list_url_pages.slice(0,1); //HACK Remove slice
+            return list_url_pages;
         });
 }
-
-
-URL_list_offers = "https://sogetifrance-recrute.talent-soft.com/offre-de-emploi/liste-offres.aspx";
-
-getOffersUrl(URL_list_offers)
-.then(list => {
-    console.log(list.length);
-    list.forEach(offer => {
-        offer.getContent().then(data => {
-            offer.data = data;
-        });
-    })
-});
 
 class Offer {
     constructor (url){
@@ -89,27 +76,39 @@ class Offer {
 
     }
 
-    getContent(){
+    getOfferHtml(){
+        var offer = this;
+        return new Promise(function (resolve, reject) {
+            request(offer.url, function (error, res, html) {
+                if (!error) {
+                    offer.html = html;
+                    resolve(1);
+                } else {
+                    reject(error);
+                }
+            });
+        });
+    }
 
-        return getHtml(this.url).then(html => {
-            this.html = html;
+    getContent(){
+        
+        if (this.html != undefined){
 
             var $ = cheerio.load(this.html);
-    
+
             this.title = $('#titrepages').first().find('h1 span').first().text().trim();
-    
+
             var content = $('#contenu-ficheoffre').first();
-    
-            var dataDictionary = {};
+
+            this.data = {};
 
 
             var list = content.find('h3').slice(1)
             .each((i,el) => {
-                // console.log(el.children[0].data.trim() + " : " + el.next.children[0].data.trim());
                 let key = el.children[0].data.trim();
                 var next = el.next;
                 var value = "";
-                while (next.children.length < 1){
+                while (next.children.length < 1 && next.next != undefined && next.next != null){
                     next = next.next
                 }
                 if (next.children.length == 1){
@@ -119,23 +118,60 @@ class Offer {
                     value = next.children.reduce((prev, curr) =>{
                         var prevText = prev;
                         if (typeof(prev) != typeof("")){
-                            prevText = prev.type == "text" ? prev.data : "";
+                            prevText = prev.type == "text" ? prev.data.trim() : "";
                         }
                         
-                        var currText = curr.type == "text" ? curr.data : "";
+                        var currText = curr.type == "text" ? curr.data.trim() : "";
 
                         return prevText + "\n" + currText;
                     });
                 }
-                dataDictionary[key] = value;
+                this.data[key] = value;
                 
             });
 
-            return dataDictionary;
+            return 1;
+        }
 
-        });
-
+        return 0;
 
     }
 
 }
+
+
+URL_list_offers = "https://sogetifrance-recrute.talent-soft.com/offre-de-emploi/liste-offres.aspx";
+
+var list_Offers = [];
+
+getOffersUrl(URL_list_offers)
+.then(list => {
+    list_Offers = list;
+    console.log(list_Offers.length + " offres récupérées");
+
+    var promisesContent = [];
+    list_Offers.forEach(offer => {
+        promisesContent.push(offer.getOfferHtml());
+    });
+
+    Promise.all(promisesContent)
+    .catch(err => {
+        console.log(err)
+    })
+    .then(listResponses => {
+        var allOk = listResponses.every(res => {
+            return res == 1 ;
+        });
+        console.log(allOk);
+
+        if (allOk){
+        
+            list_Offers.forEach(offer => {
+                offer.getContent();
+            })
+
+            console.log("ALL DATA PARSED");
+        }
+    })
+});
+

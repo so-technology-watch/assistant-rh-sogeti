@@ -3,11 +3,7 @@
   "version": "1.0",
   "description": "Chatbot pour présenter les offres RH Sogeti",
   "dependencies": {
-    "actions-on-google": "latest",
-    "fs": "latest",
-    "promise": "^8.0.1"
-  },
-  "devDependencies": {
-    "typescript": "^2.5.2"
+    "@google-cloud/datastore": "latest",
+    "actions-on-google": "latest"
   }
 }

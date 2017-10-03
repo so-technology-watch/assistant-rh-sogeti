@@ -61,8 +61,8 @@ function showSelectedOffer(appApiAiApp) {
 }
 
 function showNextOffer(appApiAiApp) {
-  let offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-  let offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
+  var offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+  var offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
 
   var index = offersPresented.findIndex(offer => {
     return (offer.Poste == offerPresented.Poste)
@@ -97,10 +97,16 @@ function showOneOffer(appApiAiApp, offer, sentence = 'This offer matches your re
 
   let parameters = {};
   parameters[CONTEXT_PARAMETER_Offer_presented] = offer;
-  appApiAiApp.setContext(CONTEXT_OFFER_DETAIL, 1, parameters)
+  appApiAiApp.setContext(CONTEXT_OFFER_DETAIL, 2, parameters)
+
+  if(fromList){
+    let parameters = {};
+    parameters[CONTEXT_PARAMETER_Offers_presented] = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+    appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+  }
 
   appApiAiApp.ask(appApiAiApp.buildRichResponse()
-    .addSuggestions(fromList ? ['Next Offer', 'Back To List'] : []) // TODO no next offer if end of list
+    .addSuggestions(fromList ? ['Next Offer'] : []) // TODO no next offer if end of list
     .addSimpleResponse(sentence)
     .addBasicCard(
       appApiAiApp.buildBasicCard(body)

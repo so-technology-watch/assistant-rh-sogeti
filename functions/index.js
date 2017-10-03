@@ -1,6 +1,6 @@
 /////////////// APIAI Agent /////////////////////////
 
-
+const functions = require('firebase-functions');
 const ApiAiApp = require('actions-on-google').ApiAiApp;
 
 const MAP_GETOFFERS = "getOffers";
@@ -18,7 +18,7 @@ const CONTEXT_PARAMETER_Offer_presented = 'Offer_presented'
 const CITY_Parameter = 'geo-city';
 const NUMBER_Parameter = 'number-integer';
 
-exports.agent = function (request, response) {
+exports.agent = functions.https.onRequest((request, response) => {
   var appApiAiApp = new ApiAiApp({
     request: request,
     response: response
@@ -30,7 +30,7 @@ exports.agent = function (request, response) {
   let context = appApiAiApp.getContexts();
   //Map Intent to functions
   appApiAiApp.handleRequest(actionMap);
-};
+})
 
 function getOffers(appApiAiApp) {
   var city = appApiAiApp.getArgument(CITY_Parameter);

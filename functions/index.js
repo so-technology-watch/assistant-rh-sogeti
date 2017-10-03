@@ -5,9 +5,15 @@ const ApiAiApp = require('actions-on-google').ApiAiApp;
 
 const MAP_GETOFFERS = "getOffers";
 const MAP_SELECTINGOFFER = "getOffers.fallback";
+const MAP_NEXTOFFER = "getOffers.nextOffer";
 
 //WARNING no uppercase in context names
 const CONTEXT_LIST_OFFERS = 'context_list_offers'
+const CONTEXT_OFFER_DETAIL = 'context_offer_detail'
+
+
+const CONTEXT_PARAMETER_Offers_presented = 'Offers_presented'
+const CONTEXT_PARAMETER_Offer_presented = 'Offer_presented'
 
 const CITY_Parameter = 'geo-city';
 const NUMBER_Parameter = 'number-integer';
@@ -19,7 +25,8 @@ exports.agent = function (request, response) {
   });
   var actionMap = new Map();
   actionMap.set(MAP_GETOFFERS, getOffers);
-  actionMap.set(MAP_SELECTINGOFFER, selectingOffer);
+  actionMap.set(MAP_SELECTINGOFFER, showSelectedOffer);
+  actionMap.set(MAP_NEXTOFFER, showNextOffer); //////////////////HERE !!!!!!!!!!!!!!!!!
   let context = appApiAiApp.getContexts();
   //Map Intent to functions
   appApiAiApp.handleRequest(actionMap);
@@ -42,9 +49,32 @@ function getOffers(appApiAiApp) {
     })
 }
 
-function selectingOffer(appApiAiApp) {
-  let offers = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, 'Offers_presented').value;
-  console.log(offers);
+function showSelectedOffer(appApiAiApp) {
+  let offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+  let titleSelected = appApiAiApp.getSelectedOption();
+
+  var offerSelected = offersPresented.find(offer => {
+    return (offer.Poste == titleSelected);
+  })
+
+  showOneOffer(appApiAiApp, offerSelected, 'Here is the offer you want', true);
+}
+
+function showNextOffer(appApiAiApp) {
+  let offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+  let offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
+
+  var index = offersPresented.findIndex(offer => {
+    return (offer.Poste == offerPresented.Poste)
+  })
+
+  try {
+    var nextOffer = offersPresented[index + 1]
+    showOneOffer(appApiAiApp, nextOffer, 'Here is the next one', true);
+  } catch (ex) {
+    appApiAiApp.ask("Sorry, no more offers in the list")
+  }
+
 }
 
 function handleAnswerOnScreen(res, appApiAiApp) {
@@ -54,25 +84,30 @@ function handleAnswerOnScreen(res, appApiAiApp) {
     showOneOffer(appApiAiApp, res[0]);
   } else if (res.length > 1 && res.length <= 10) {
     answerWithCarousel(appApiAiApp, res);
-    // TODO after click carousel
   } else if (res.length > 10 && res.length <= 30) {
     answerWithList(appApiAiApp, res);
-    // TODO after click list
   } else if (res.length > 30) {
     appApiAiApp.ask("Too many offers matching your request");
     // TODO help narrow research
   }
 }
 
-function showOneOffer(appApiAiApp, offer) {
+function showOneOffer(appApiAiApp, offer, sentence = 'This offer matches your request !', fromList = false) {
+  var body = offer.Description.slice(0, 250).replace("\n", "  ") + "..."
+
+  let parameters = {};
+  parameters[CONTEXT_PARAMETER_Offer_presented] = offer;
+  appApiAiApp.setContext(CONTEXT_OFFER_DETAIL, 1, parameters)
+
   appApiAiApp.ask(appApiAiApp.buildRichResponse()
-    .addSimpleResponse('This offer matches your request !')
+    .addSuggestions(fromList ? ['Next Offer', 'Back To List'] : []) // TODO no next offer if end of list
+    .addSimpleResponse(sentence)
     .addBasicCard(
-      appApiAiApp.buildBasicCard(offer.Description)
+      appApiAiApp.buildBasicCard(body)
       .setTitle(offer.Poste)
       .setSubtitle(offer.Contrat + ", " + offer.Lieu)
       .addButton('See online', offer.url)
-      .setImage("https://pbs.twimg.com/profile_images/458977970716024832/_mOFbecc_400x400.png", "test")
+      .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "test")
     )
   );
 }
@@ -83,9 +118,11 @@ function answerWithCarousel(appApiAiApp, listOffers) {
       .setTitle(offer.Poste)
       .setDescription(offer.Contrat + ", " + offer.Lieu);
   });
+
   let parameters = {};
-  parameters['Offers_presented'] = listOffers;
+  parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
   appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+
   appApiAiApp.askWithCarousel(
     appApiAiApp.buildRichResponse()
     .addSimpleResponse("Those offers match your request"),
@@ -96,15 +133,24 @@ function answerWithCarousel(appApiAiApp, listOffers) {
 
 function answerWithList(appApiAiApp, listOffers) {
   var items = listOffers.map(offer => {
-    return appApiAiApp.buildOptionItem(offer.Poste, [])
+    return appApiAiApp.buildOptionItem(offer.Poste, [offer.url])
       .setTitle(offer.Poste)
       .setDescription(offer.Contrat + ", " + offer.Lieu);
   });
+
+  let parameters = {};
+  parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
+  appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+
   appApiAiApp.askWithList("Those offers match your request",
     appApiAiApp.buildList()
     .addItems(items)
   );
 }
+
+
+//////////////////// SPEAKING API /////////////////////
+
 
 function handleAnswerNoScreen(res, appApiAiApp) {
 
@@ -123,6 +169,8 @@ function handleAnswerNoScreen(res, appApiAiApp) {
     )
   }
 }
+
+
 
 function addSpeak(s) {
   return '<speak>' + s + '</speak>';

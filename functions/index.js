@@ -57,10 +57,13 @@ function showSelectedOffer(appApiAiApp) {
     return (offer.Poste == titleSelected);
   })
 
-  showOneOffer(appApiAiApp, offerSelected, 'Here is the offer you want', true);
+  const lang = appApiAiApp.getUserLocale();
+
+  showOneOffer(appApiAiApp, offerSelected, RESPONSE_THE_OFFER[lang], true);
 }
 
 function showNextOffer(appApiAiApp) {
+  const lang = appApiAiApp.getUserLocale();
   var offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
   var offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
 
@@ -70,29 +73,31 @@ function showNextOffer(appApiAiApp) {
 
   try {
     var nextOffer = offersPresented[index + 1]
-    showOneOffer(appApiAiApp, nextOffer, 'Here is the next one', true);
+    showOneOffer(appApiAiApp, nextOffer, RESPONSE_HERE_IS_NEXT_OFFER[lang], true);
   } catch (ex) {
-    appApiAiApp.ask("Sorry, no more offers in the list")
+    appApiAiApp.ask(RESPONSE_HERE_IS_NEXT_OFFER_NO_MORE[lang])
   }
 
 }
 
 function handleAnswerOnScreen(res, appApiAiApp) {
+  const lang = appApiAiApp.getUserLocale();
   if (res.length == 0) {
-    appApiAiApp.ask("No offers matching your request \nDo you want to ask something else ?");
+    appApiAiApp.ask(RESPONSE_NO_OFFER_MATCHING[lang]);
   } else if (res.length == 1) {
-    showOneOffer(appApiAiApp, res[0]);
+    showOneOffer(appApiAiApp, res[0], RESPONSE_THIS_OFFER_MATCHES[lang]);
   } else if (res.length > 1 && res.length <= 10) {
     answerWithCarousel(appApiAiApp, res);
   } else if (res.length > 10 && res.length <= 30) {
     answerWithList(appApiAiApp, res);
   } else if (res.length > 30) {
-    appApiAiApp.ask("Too many offers matching your request");
+    appApiAiApp.ask(RESPONSE_TOO_MANY_OFFERS[lang]);
     // TODO help narrow research
   }
 }
 
-function showOneOffer(appApiAiApp, offer, sentence = 'This offer matches your request !', fromList = false) {
+function showOneOffer(appApiAiApp, offer, sentence, fromList = false) {
+  const lang = appApiAiApp.getUserLocale();
   var body = offer.Description.slice(0, 250).replace("\n", "  ") + "..."
 
   let parameters = {};
@@ -106,13 +111,13 @@ function showOneOffer(appApiAiApp, offer, sentence = 'This offer matches your re
   }
 
   appApiAiApp.ask(appApiAiApp.buildRichResponse()
-    .addSuggestions(fromList ? ['Next Offer'] : []) // TODO no next offer if end of list
+    .addSuggestions(fromList ? [RESPONSE_NEXT_OFFER[lang]] : []) // TODO no next offer if end of list
     .addSimpleResponse(sentence)
     .addBasicCard(
       appApiAiApp.buildBasicCard(body)
       .setTitle(offer.Poste)
       .setSubtitle(offer.Contrat + ", " + offer.Lieu)
-      .addButton('See online', offer.url)
+      .addButton(RESPONSE_SEE_ONLINE[lang], offer.url)
       .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "test")
     )
   );
@@ -131,13 +136,14 @@ function answerWithCarousel(appApiAiApp, listOffers) {
 
   appApiAiApp.askWithCarousel(
     appApiAiApp.buildRichResponse()
-    .addSimpleResponse("Those offers match your request"),
+    .addSimpleResponse(RESPONSE_THOSE_OFFERS_MATCH[lang]),
     appApiAiApp.buildCarousel()
     .addItems(items)
   );
 }
 
 function answerWithList(appApiAiApp, listOffers) {
+  const lang = appApiAiApp.getUserLocale();
   var items = listOffers.map(offer => {
     return appApiAiApp.buildOptionItem(offer.Poste, [offer.url])
       .setTitle(offer.Poste)
@@ -148,7 +154,7 @@ function answerWithList(appApiAiApp, listOffers) {
   parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
   appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
 
-  appApiAiApp.askWithList("Those offers match your request",
+  appApiAiApp.askWithList(RESPONSE_THOSE_OFFERS_MATCH[lang],
     appApiAiApp.buildList()
     .addItems(items)
   );
@@ -159,6 +165,7 @@ function answerWithList(appApiAiApp, listOffers) {
 
 
 function handleAnswerNoScreen(res, appApiAiApp) {
+  const lang = appApiAiApp.getUserLocale();
 
   if (res.length == 0) {
     appApiAiApp.ask(addSpeak("<p><s>No offers matching your request.</s> <s>Do you want to ask something else ?</s>"));
@@ -224,3 +231,32 @@ function dataGetter(city, nb) {
     })
 
 };
+
+
+//////////////////////// LANGAGE MANAGEMENT /////////////////////////
+
+const FR_FR = "fr-FR";
+const EN_GB = "en-GB";
+const EN_US = "en-US";
+
+function NewSentence(english, french) {
+  var sentence = {};
+  sentence[FR_FR] = french;
+  sentence[EN_GB] = english;
+  sentence[EN_US] = english;
+  return sentence;
+}
+
+const RESPONSE_THE_OFFER = NewSentence('Here is the offer you want', "Voilà l'offre qui vous intéresse");
+
+const RESPONSE_NEXT_OFFER = NewSentence('Next Offer', "Offre suivante");
+const RESPONSE_HERE_IS_NEXT_OFFER = NewSentence('Here is the next one', "Voilà l'offre l'offre suivante");
+const RESPONSE_HERE_IS_NEXT_OFFER_NO_MORE = NewSentence('Sorry, no more offers in the list', "Désolé, il n'y a plus d'offres dans la liste");
+
+const RESPONSE_SEE_ONLINE = NewSentence('See Online', "Voir en ligne");
+
+const RESPONSE_NO_OFFER_MATCHING = NewSentence('Sorry, no offers matching your request', "Désolé, aucune offre ne correspond à votre requête");
+const RESPONSE_TOO_MANY_OFFERS = NewSentence('Sorry, too many offers matching your request', "Désolé, il y a trop d'offres correspondant à votre requête");
+
+const RESPONSE_THIS_OFFER_MATCHES = NewSentence('This offer matches your request', "Cette offre correspond à votre requête");
+const RESPONSE_THOSE_OFFERS_MATCH = NewSentence('Those offers match your request', "Ces offres correspondent à votre requête");

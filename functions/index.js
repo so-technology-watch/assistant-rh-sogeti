@@ -9,7 +9,7 @@ const MAP_GETOFFERS = "getOffers";
 const MAP_SELECTINGOFFER = "getOffers.fallback";
 const MAP_NEXTOFFER = "getOffers.nextOffer";
 const MAP_PREVIOUSOFFER = "getOffers.previousOffer";
-const MAP_PARSEOFFERS = "parseOffers";
+const MAP_PARSEROFFERS = "parseOffers";
 
 //WARNING no uppercase in context names
 const CONTEXT_LIST_OFFERS = 'context_list_offers'

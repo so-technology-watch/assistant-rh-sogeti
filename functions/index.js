@@ -1,4 +1,4 @@
-/////////////// APIAI Agent /////////////////////////
+//#region init
 
 const functions = require('firebase-functions');
 const ApiAiApp = require('actions-on-google').ApiAiApp;
@@ -6,6 +6,7 @@ const ApiAiApp = require('actions-on-google').ApiAiApp;
 const MAP_GETOFFERS = "getOffers";
 const MAP_SELECTINGOFFER = "getOffers.fallback";
 const MAP_NEXTOFFER = "getOffers.nextOffer";
+const MAP_PREVIOUSOFFER = "getOffers.previousOffer";
 
 //WARNING no uppercase in context names
 const CONTEXT_LIST_OFFERS = 'context_list_offers'
@@ -16,7 +17,7 @@ const CONTEXT_PARAMETER_Offers_presented = 'Offers_presented'
 const CONTEXT_PARAMETER_Offer_presented = 'Offer_presented'
 
 const CITY_Parameter = 'geo-city';
-const NUMBER_Parameter = 'number-integer';
+const NUMBER_Parameter = 'number';
 
 exports.agent = functions.https.onRequest((request, response) => {
   var appApiAiApp = new ApiAiApp({
@@ -26,7 +27,8 @@ exports.agent = functions.https.onRequest((request, response) => {
   var actionMap = new Map();
   actionMap.set(MAP_GETOFFERS, getOffers);
   actionMap.set(MAP_SELECTINGOFFER, showSelectedOffer);
-  actionMap.set(MAP_NEXTOFFER, showNextOffer); //////////////////HERE !!!!!!!!!!!!!!!!!
+  actionMap.set(MAP_NEXTOFFER, showNextOffer);
+  actionMap.set(MAP_PREVIOUSOFFER, showPreviousOffer);
   let context = appApiAiApp.getContexts();
   //Map Intent to functions
   appApiAiApp.handleRequest(actionMap);
@@ -48,6 +50,10 @@ function getOffers(appApiAiApp) {
       }
     })
 }
+
+//#endregion
+
+//#region after selection
 
 function showSelectedOffer(appApiAiApp) {
   let offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
@@ -75,10 +81,32 @@ function showNextOffer(appApiAiApp) {
     var nextOffer = offersPresented[index + 1]
     showOneOffer(appApiAiApp, nextOffer, RESPONSE_HERE_IS_NEXT_OFFER[lang], true);
   } catch (ex) {
-    appApiAiApp.ask(RESPONSE_HERE_IS_NEXT_OFFER_NO_MORE[lang])
+    appApiAiApp.ask(RESPONSE_NO_MORE_IN_LIST[lang])
   }
 
 }
+
+function showPreviousOffer(appApiAiApp) {
+  const lang = appApiAiApp.getUserLocale();
+  var offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+  var offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
+
+  var index = offersPresented.findIndex(offer => {
+    return (offer.Poste == offerPresented.Poste)
+  })
+
+  try {
+    var nextOffer = offersPresented[index - 1]
+    showOneOffer(appApiAiApp, nextOffer, RESPONSE_HERE_IS_PREVIOUS_OFFER[lang], true);
+  } catch (ex) {
+    appApiAiApp.ask(RESPONSE_NO_MORE_IN_LIST[lang])
+  }
+
+}
+
+//#endregion
+
+//#region list offers
 
 function handleAnswerOnScreen(res, appApiAiApp) {
   const lang = appApiAiApp.getUserLocale();
@@ -104,20 +132,20 @@ function showOneOffer(appApiAiApp, offer, sentence, fromList = false) {
   parameters[CONTEXT_PARAMETER_Offer_presented] = offer;
   appApiAiApp.setContext(CONTEXT_OFFER_DETAIL, 2, parameters)
 
-  if(fromList){
+  if (fromList) {
     let parameters = {};
     parameters[CONTEXT_PARAMETER_Offers_presented] = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
     appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
   }
 
   appApiAiApp.ask(appApiAiApp.buildRichResponse()
-    .addSuggestions(fromList ? [RESPONSE_NEXT_OFFER[lang]] : []) // TODO no next offer if end of list
+    .addSuggestions(fromList ? [REQUEST_PREVIOUS_OFFER[lang], REQUEST_NEXT_OFFER[lang]] : []) // TODO no next offer if end of list
     .addSimpleResponse(sentence)
     .addBasicCard(
       appApiAiApp.buildBasicCard(body)
       .setTitle(offer.Poste)
       .setSubtitle(offer.Contrat + ", " + offer.Lieu)
-      .addButton(RESPONSE_SEE_ONLINE[lang], offer.url)
+      .addButton(REQUEST_SEE_ONLINE[lang], offer.url)
       .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "test")
     )
   );
@@ -160,6 +188,8 @@ function answerWithList(appApiAiApp, listOffers) {
     .addItems(items)
   );
 }
+
+//#endregion
 
 
 //#region SPEAKING API
@@ -253,11 +283,12 @@ function NewSentence(english, french) {
 
 const RESPONSE_THE_OFFER = NewSentence('Here is the offer you want', "Voilà l'offre qui vous intéresse");
 
-const RESPONSE_NEXT_OFFER = NewSentence('Next Offer', "Offre suivante");
+const REQUEST_NEXT_OFFER = NewSentence('Next Offer', "Offre suivante");
 const RESPONSE_HERE_IS_NEXT_OFFER = NewSentence('Here is the next one', "Voilà l'offre l'offre suivante");
-const RESPONSE_HERE_IS_NEXT_OFFER_NO_MORE = NewSentence('Sorry, no more offers in the list', "Désolé, il n'y a plus d'offres dans la liste");
 
-const RESPONSE_SEE_ONLINE = NewSentence('See Online', "Voir en ligne");
+const REQUEST_PREVIOUS_OFFER = NewSentence('Previous Offer', "Offre précédente");
+const RESPONSE_HERE_IS_PREVIOUS_OFFER = NewSentence('Here is the previous one', "Voilà l'offre l'offre suivante");
+const RESPONSE_NO_MORE_IN_LIST = NewSentence('Sorry, no more offers in the list', "Désolé, il n'y a plus d'offres dans la liste");
 
 const RESPONSE_NO_OFFER_MATCHING = NewSentence('Sorry, no offers matching your request', "Désolé, aucune offre ne correspond à votre requête");
 const RESPONSE_TOO_MANY_OFFERS = NewSentence('Sorry, too many offers matching your request', "Désolé, il y a trop d'offres correspondant à votre requête");
@@ -265,5 +296,6 @@ const RESPONSE_TOO_MANY_OFFERS = NewSentence('Sorry, too many offers matching yo
 const RESPONSE_THIS_OFFER_MATCHES = NewSentence('This offer matches your request', "Cette offre correspond à votre requête");
 const RESPONSE_THOSE_OFFERS_MATCH = NewSentence('Those offers match your request', "Ces offres correspondent à votre requête");
 
+const REQUEST_SEE_ONLINE = NewSentence('See Online', "Voir en ligne");
 
 //#endregion

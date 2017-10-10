@@ -124,6 +124,7 @@ function showOneOffer(appApiAiApp, offer, sentence, fromList = false) {
 }
 
 function answerWithCarousel(appApiAiApp, listOffers) {
+  const lang = appApiAiApp.getUserLocale();
   var items = listOffers.map(offer => {
     return appApiAiApp.buildOptionItem(offer.Poste, [])
       .setTitle(offer.Poste)
@@ -161,8 +162,7 @@ function answerWithList(appApiAiApp, listOffers) {
 }
 
 
-//////////////////// SPEAKING API /////////////////////
-
+//#region SPEAKING API
 
 function handleAnswerNoScreen(res, appApiAiApp) {
   const lang = appApiAiApp.getUserLocale();
@@ -206,9 +206,10 @@ function tellOneOffer(appApiAiApp, offer, addDescription = false) {
   return addSpeak(answer);
 }
 
-/////////////// DATA GETTER FROM DATASTORE /////////////////////////
+//#endregion
 
 
+//#region DATA GETTER FROM DATASTORE
 
 const Datastore = require('@google-cloud/datastore');
 const projectId = 'chatbot-sogeti';
@@ -232,8 +233,11 @@ function dataGetter(city, nb) {
 
 };
 
+//#endregion
 
-//////////////////////// LANGAGE MANAGEMENT /////////////////////////
+
+//#region LANGAGE MANAGEMENT
+
 
 const FR_FR = "fr-FR";
 const EN_GB = "en-GB";
@@ -260,3 +264,6 @@ const RESPONSE_TOO_MANY_OFFERS = NewSentence('Sorry, too many offers matching yo
 
 const RESPONSE_THIS_OFFER_MATCHES = NewSentence('This offer matches your request', "Cette offre correspond à votre requête");
 const RESPONSE_THOSE_OFFERS_MATCH = NewSentence('Those offers match your request', "Ces offres correspondent à votre requête");
+
+
+//#endregion

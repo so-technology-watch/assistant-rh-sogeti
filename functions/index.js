@@ -2,11 +2,14 @@
 
 const functions = require('firebase-functions');
 const ApiAiApp = require('actions-on-google').ApiAiApp;
+const request = require('request');
+const cheerio = require('cheerio');
 
 const MAP_GETOFFERS = "getOffers";
 const MAP_SELECTINGOFFER = "getOffers.fallback";
 const MAP_NEXTOFFER = "getOffers.nextOffer";
 const MAP_PREVIOUSOFFER = "getOffers.previousOffer";
+const MAP_PARSEOFFERS = "parseOffers";
 
 //WARNING no uppercase in context names
 const CONTEXT_LIST_OFFERS = 'context_list_offers'
@@ -29,6 +32,7 @@ exports.agent = functions.https.onRequest((request, response) => {
   actionMap.set(MAP_SELECTINGOFFER, showSelectedOffer);
   actionMap.set(MAP_NEXTOFFER, showNextOffer);
   actionMap.set(MAP_PREVIOUSOFFER, showPreviousOffer);
+  actionMap.set(MAP_PARSEROFFERS, updateAllOffers);
   let context = appApiAiApp.getContexts();
   //Map Intent to functions
   appApiAiApp.handleRequest(actionMap);
@@ -241,8 +245,12 @@ function tellOneOffer(appApiAiApp, offer, addDescription = false) {
 
 //#region DATA GETTER FROM DATASTORE
 
+const URL_RH_website = "https://sogetifrance-recrute.talent-soft.com/offre-de-emploi/liste-offres.aspx";
+
+const URL_RH_root = "https://sogetifrance-recrute.talent-soft.com";
+
 const Datastore = require('@google-cloud/datastore');
-const projectId = 'chatbot-sogeti';
+const projectId = 'assistant-rh-sogeti';
 const datastore = Datastore({
   projectId: projectId
 });
@@ -268,6 +276,387 @@ function dataGetter(city, nb) {
 
 //#region LANGAGE MANAGEMENT
 
+
+// Parser
+
+function getHtml(url) {
+    return new Promise(function (resolve, reject) {
+        request(url, function (error, res, html) {
+            if (!error) {
+                resolve(html);
+            } else {
+                reject(error);
+            }
+        });
+    });
+}
+
+function getOffersUrl() {
+
+    return getOffersPages()
+        .then(list_url_pages => {
+            var list_url_offers = [];
+            var promises = [];
+            for (var i = 0; i < list_url_pages.length; i++) {
+                promises.push(getHtml(list_url_pages[i])
+                    .catch(err => {
+                        console.log(err);
+                    })
+                    .then(res => {
+                        var doc = cheerio.load(res);
+                        var list_url_offers_this_page = [];
+                        doc('li.offerlist-item h3 a').each((i, el) => {
+                            list_url_offers_this_page.push(new Offer(el.attribs['href']));
+                        });
+                        return list_url_offers_this_page;
+                    })
+                );
+            }
+            return Promise.all(promises).then(list_offers_all_pages => {
+                return list_offers_all_pages.reduce((prev, curr) => {
+                    return curr.concat(prev);
+                })
+            });
+        });
+
+}
+
+function getOffersPages() {
+
+    return getHtml(URL_RH_website)
+        .catch(err => {
+            console.log(err);
+        })
+        .then(html => {
+            var $ = cheerio.load(html);
+            //Get the list of urls where there are offers
+            var list_url_pages = [];
+            list_url_pages[0] = URL_RH_website;
+            $('#resultatPagination').first().find('a')
+                .filter((i, el) => {
+                    // Remove the last element
+                    return el.attribs['id'] != "ctl00_ctl00_corpsRoot_corps_Pagination_linkSuivPage";
+                })
+                .each((i, el) => {
+                    list_url_pages.push(el.attribs['href']);
+                });
+            return list_url_pages; //.slice(0, 1);
+        });
+}
+
+const CONTRAT = "Contrat";
+const DESCRIPTION = "Description de la mission";
+const POSTE = "Intitulé du poste";
+const LIEU = "Lieu";
+const LOCALISATION = "Localisation du poste";
+const METIER = "Métier";
+const PROFIL = "Profil";
+const URL = "url";
+
+const DESCRIPTION_SHORT = "Description";
+const POSTE_SHORT = "Poste";
+const LOCALISATION_SHORT = "Localisation";
+const METIER_SHORT = "Metier";
+
+var SHORT_KEY = {};
+[CONTRAT, DESCRIPTION, POSTE, LIEU, LOCALISATION, METIER, PROFIL, URL]
+.forEach(key => {
+    switch (key) {
+        case (DESCRIPTION):
+            SHORT_KEY[key] = DESCRIPTION_SHORT
+            break;
+        case (POSTE):
+            SHORT_KEY[key] = POSTE_SHORT
+            break;
+        case (LOCALISATION):
+            SHORT_KEY[key] = LOCALISATION_SHORT
+            break;
+        case (METIER):
+            SHORT_KEY[key] = METIER_SHORT
+            break;
+        default:
+            SHORT_KEY[key] = key
+            break;
+    }
+})
+
+function IsShortKey(key) {
+    return Object.keys(SHORT_KEY)
+        .map(longKey => {
+            return SHORT_KEY[longKey];
+        })
+        .includes(key);
+};
+
+function IsLongKey(key) {
+    return Object.keys(SHORT_KEY)
+        .includes(key);
+};
+
+class Offer {
+    constructor(url) {
+        this.url = URL_RH_root + url;
+
+    }
+
+    getOfferHtml() {
+        var offer = this;
+        return new Promise(function (resolve, reject) {
+            request(offer.url, function (error, res, html) {
+                if (!error) {
+                    offer.html = html;
+                    resolve(1);
+                } else {
+                    reject(error);
+                }
+            });
+        });
+    }
+
+    getContent() {
+
+        if (this.html != undefined) {
+            var $ = cheerio.load(this.html);
+            var content = $('#contenu-ficheoffre').first();
+            var list = content.find('h3').slice(1)
+                .each((i, el) => {
+                    let key = getValueTag(el.children[0]);
+                    if (IsLongKey(key)) {
+                        var value = getNextValue(el);
+                        var valueCleaned = cleanValue(key, value);
+                        this[SHORT_KEY[key]] = valueCleaned;
+                    }
+                });
+            this.validateOffer();
+            return 1;
+        }
+        return 0;
+    }
+
+    validateOffer() {
+        if (this[LIEU] && this[LIEU] != "") {
+            this.validated = true;
+        } else {
+            this.validated = false;
+        }
+    }
+}
+
+function cleanValue(key, value) {
+    const specialCars = [',', '/', '(', ')', '&', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    if (key == LIEU) {
+        specialCars.forEach(c => {
+            if (value.includes(c)) {
+                value = "";
+            }
+        });
+        return value.toLowerCase();
+    }
+    if (key == CONTRAT) {
+        if (value.includes("CDI")) {
+            return "CDI";
+        }
+        if (value.includes("CDD")) {
+            return "CDD";
+        }
+        if (value.includes("Contrat d'apprentissage")) {
+            return "Contrat d'apprentissage";
+        }
+        if (value.includes("Stage conventionné")) {
+            return "Stage";
+        }
+        if (value.includes("Contrat de professionnalisation")) {
+            return "Contrat de professionnalisation";
+        }
+    }
+    if (key == POSTE) {
+        return value.replace(" H/F", "").replace("(H/F)", "");
+    }
+    if (key == LOCALISATION) {
+        return value.split(',')[0];
+    }
+
+    return value;
+}
+
+function getValueTag(el) {
+    var type = typeof (el);
+    var value = "";
+    if (type == "object") {
+        if (el instanceof cheerio) {
+            value = el.text();
+        } else if (el.data) {
+            value = el.data;
+        }
+    } else if (type == "string") {
+        value = el;
+    }
+    return value.trim();
+}
+
+function getNextValue(el) {
+    var next = el.next;
+    var value = "";
+    while (next.children.length < 1 && next.next != undefined && next.next != null) {
+        next = next.next
+    }
+    if (next.children.length == 1) {
+        value = getValueTag(next.children[0]);
+    } else {
+        value = next.children.reduce((prev, curr) => {
+            return getValueTag(prev) + "\n" + getValueTag(curr);
+        });
+    }
+    return value.trim();
+}
+
+function getOffersData() {
+
+    var list_Offers = [];
+
+    return getOffersUrl()
+        .then(list => {
+            list_Offers = list;
+            console.log(list_Offers.length + " offres récupérées");
+
+            var promisesContent = [];
+            list_Offers.forEach(offer => {
+                promisesContent.push(offer.getOfferHtml());
+            });
+
+            return Promise.all(promisesContent)
+                .catch(err => {
+                    console.log(err)
+                })
+                .then(listResponses => {
+                    var allOk = listResponses.every(res => {
+                        return res == 1;
+                    });
+                    // console.log(allOk ? "Toutes les offres sont ok" : "Des offres ont des erreurs");
+
+                    if (allOk) {
+
+                        list_Offers.forEach(offer => {
+                            try {
+                                offer.getContent();
+                            } catch (err) {
+                                console.log(err);
+                            }
+                        })
+
+                        console.log("ALL DATA PARSED");
+                        return list_Offers;
+                    }
+                })
+        });
+}
+
+function saveOffer(offer) {
+    const kind = "Offer";
+    const OfferKey = datastore.key(kind);
+    var entity = {
+        key: OfferKey,
+        data: []
+    };
+    Object.keys(offer).forEach(key => {
+        if (IsShortKey(key)) {
+            if (key == DESCRIPTION_SHORT || key == PROFIL) {
+                entity.data.push({
+                    name: key,
+                    value: offer[key],
+                    excludeFromIndexes: true
+                })
+            } else {
+                entity.data.push({
+                    name: key,
+                    value: offer[key]
+                })
+            }
+        }
+    })
+    datastore.save(entity)
+        .then(() => {
+            // console.log(`Offer ${OfferKey.id} created successfully.`);
+        })
+        .catch((err) => {
+            console.error('ERROR:', err);
+        });
+}
+
+function saveAllOffers() {
+    getOffersData()
+        .then(listOffers => {
+            listOffers.forEach(offer => {
+                if (offer.validated) {
+                    saveOffer(offer);
+                }
+            })
+
+        });
+}
+
+function getAllExistingOffers() {
+    var query = datastore.createQuery("Offer");
+
+    return datastore.runQuery(query)
+        .then(res => {
+            return res[0];
+        })
+}
+
+function getAllExistingUrls(offers) {
+    return offers.map(offer => {
+        return offer.url;
+    })
+}
+
+function getAllExistingKeys(offers) {
+    return offers.map(offer => {
+        return offer[datastore.KEY];
+    })
+}
+
+function deleteAllOffers() {
+    getAllExistingOffers().then(existingOffers => {
+        getAllExistingKeys(existingOffers).forEach(key => {
+            datastore.delete(key, err => {
+                if (err) {
+                    console.log(err);
+                }
+            })
+        })
+    })
+}
+
+function updateAllOffers() {
+    getAllExistingOffers().then(existingOffers => {
+        getOffersData()
+        .then(listOffers => {
+            // Saving all new offers
+            var existingUrls = getAllExistingUrls(existingOffers);
+            var numberInvalid = 0;
+            var numberNew = 0;
+            listOffers.forEach(offer => {
+                if (offer.validated && !existingUrls.includes(offer.url)) {
+                    saveOffer(offer);
+                    numberNew ++;
+                }
+                else{
+                    if (!offer.validated){
+                        numberInvalid ++;
+                    }
+                }
+            })
+
+            console.log(numberInvalid + " invalid offers");
+            console.log(numberNew + " new offers saved");
+
+            //TODO Remove old offers
+
+        });
+
+    })
+}
 
 const FR_FR = "fr-FR";
 const EN_GB = "en-GB";

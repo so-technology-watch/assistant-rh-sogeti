@@ -274,8 +274,6 @@ function dataGetter(city, nb) {
 //#endregion
 
 
-//#region LANGAGE MANAGEMENT
-
 
 // Parser
 
@@ -415,6 +413,8 @@ class Offer {
 
     getContent() {
 
+      console.log("Getting Content of " + this.url);
+
         if (this.html != undefined) {
             var $ = cheerio.load(this.html);
             var content = $('#contenu-ficheoffre').first();
@@ -424,6 +424,7 @@ class Offer {
                     if (IsLongKey(key)) {
                         var value = getNextValue(el);
                         var valueCleaned = cleanValue(key, value);
+                        console.log("Getting key" + key);
                         this[SHORT_KEY[key]] = valueCleaned;
                     }
                 });
@@ -438,6 +439,7 @@ class Offer {
             this.validated = true;
         } else {
             this.validated = false;
+            console.log(this);
         }
     }
 }
@@ -657,6 +659,10 @@ function updateAllOffers() {
 
     })
 }
+
+
+//#region LANGAGE MANAGEMENT
+
 
 const FR_FR = "fr-FR";
 const EN_GB = "en-GB";

@@ -99,7 +99,7 @@
             "webhookUsed": "true",
             "webhookForSlotFillingUsed": "false",
             "nluResponseTime": 8,
-            "intentName": "getOffers"
+            "intentName": "parseOffers"
         },
         "fulfillment": {
             "speech": "",

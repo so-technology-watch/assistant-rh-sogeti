@@ -439,7 +439,7 @@ class Offer {
             this.validated = true;
         } else {
             this.validated = false;
-            console.log(this);
+            console.log(this[LIEU]);
         }
     }
 }

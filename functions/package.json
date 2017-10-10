@@ -9,6 +9,5 @@
     "cheerio": "latest",
     "@google-cloud/datastore": "latest",
     "actions-on-google": "latest"
-  },
-  "private": true
+  }
 }

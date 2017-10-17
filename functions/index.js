@@ -23,36 +23,36 @@ const CITY_Parameter = 'geo-city';
 const NUMBER_Parameter = 'number';
 
 exports.agent = functions.https.onRequest((request, response) => {
-  var appApiAiApp = new ApiAiApp({
-    request: request,
-    response: response
-  });
-  var actionMap = new Map();
-  actionMap.set(MAP_GETOFFERS, getOffers);
-  actionMap.set(MAP_SELECTINGOFFER, showSelectedOffer);
-  actionMap.set(MAP_NEXTOFFER, showNextOffer);
-  actionMap.set(MAP_PREVIOUSOFFER, showPreviousOffer);
-  actionMap.set(MAP_PARSEROFFERS, updateAllOffers);
-  let context = appApiAiApp.getContexts();
-  //Map Intent to functions
-  appApiAiApp.handleRequest(actionMap);
+    var appApiAiApp = new ApiAiApp({
+        request: request,
+        response: response
+    });
+    var actionMap = new Map();
+    actionMap.set(MAP_GETOFFERS, getOffers);
+    actionMap.set(MAP_SELECTINGOFFER, showSelectedOffer);
+    actionMap.set(MAP_NEXTOFFER, showNextOffer);
+    actionMap.set(MAP_PREVIOUSOFFER, showPreviousOffer);
+    actionMap.set(MAP_PARSEROFFERS, updateAllOffers);
+    let context = appApiAiApp.getContexts();
+    //Map Intent to functions
+    appApiAiApp.handleRequest(actionMap);
 })
 
 function getOffers(appApiAiApp) {
-  var city = appApiAiApp.getArgument(CITY_Parameter);
-  var nbOffers = parseInt(appApiAiApp.getArgument(NUMBER_Parameter));
+    var city = appApiAiApp.getArgument(CITY_Parameter);
+    var nbOffers = parseInt(appApiAiApp.getArgument(NUMBER_Parameter));
 
-  dataGetter(city, nbOffers)
-    .catch(err => {
-      console.log(err);
-    })
-    .then(res => {
-      if (appApiAiApp.hasSurfaceCapability(appApiAiApp.SurfaceCapabilities.SCREEN_OUTPUT)) {
-        handleAnswerOnScreen(res, appApiAiApp);
-      } else if (appApiAiApp.hasSurfaceCapability(appApiAiApp.SurfaceCapabilities.AUDIO_OUTPUT)) {
-        handleAnswerNoScreen(res, appApiAiApp);
-      }
-    })
+    dataGetter(city, nbOffers)
+        .catch(err => {
+            console.log(err);
+        })
+        .then(res => {
+            if (appApiAiApp.hasSurfaceCapability(appApiAiApp.SurfaceCapabilities.SCREEN_OUTPUT)) {
+                handleAnswerOnScreen(res, appApiAiApp);
+            } else if (appApiAiApp.hasSurfaceCapability(appApiAiApp.SurfaceCapabilities.AUDIO_OUTPUT)) {
+                handleAnswerNoScreen(res, appApiAiApp);
+            }
+        })
 }
 
 //#endregion
@@ -60,51 +60,51 @@ function getOffers(appApiAiApp) {
 //#region after selection
 
 function showSelectedOffer(appApiAiApp) {
-  let offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-  let titleSelected = appApiAiApp.getSelectedOption();
+    let offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+    let titleSelected = appApiAiApp.getSelectedOption();
 
-  var offerSelected = offersPresented.find(offer => {
-    return (offer.Poste == titleSelected);
-  })
+    var offerSelected = offersPresented.find(offer => {
+        return (offer.Poste == titleSelected);
+    })
 
-  const lang = appApiAiApp.getUserLocale();
+    const lang = appApiAiApp.getUserLocale();
 
-  showOneOffer(appApiAiApp, offerSelected, RESPONSE_THE_OFFER[lang], true);
+    showOneOffer(appApiAiApp, offerSelected, RESPONSE_THE_OFFER[lang], true);
 }
 
 function showNextOffer(appApiAiApp) {
-  const lang = appApiAiApp.getUserLocale();
-  var offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-  var offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
+    const lang = appApiAiApp.getUserLocale();
+    var offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+    var offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
 
-  var index = offersPresented.findIndex(offer => {
-    return (offer.Poste == offerPresented.Poste)
-  })
+    var index = offersPresented.findIndex(offer => {
+        return (offer.Poste == offerPresented.Poste)
+    })
 
-  try {
-    var nextOffer = offersPresented[index + 1]
-    showOneOffer(appApiAiApp, nextOffer, RESPONSE_HERE_IS_NEXT_OFFER[lang], true);
-  } catch (ex) {
-    appApiAiApp.ask(RESPONSE_NO_MORE_IN_LIST[lang])
-  }
+    try {
+        var nextOffer = offersPresented[index + 1]
+        showOneOffer(appApiAiApp, nextOffer, RESPONSE_HERE_IS_NEXT_OFFER[lang], true);
+    } catch (ex) {
+        appApiAiApp.ask(RESPONSE_NO_MORE_IN_LIST[lang])
+    }
 
 }
 
 function showPreviousOffer(appApiAiApp) {
-  const lang = appApiAiApp.getUserLocale();
-  var offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-  var offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
+    const lang = appApiAiApp.getUserLocale();
+    var offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+    var offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
 
-  var index = offersPresented.findIndex(offer => {
-    return (offer.Poste == offerPresented.Poste)
-  })
+    var index = offersPresented.findIndex(offer => {
+        return (offer.Poste == offerPresented.Poste)
+    })
 
-  try {
-    var nextOffer = offersPresented[index - 1]
-    showOneOffer(appApiAiApp, nextOffer, RESPONSE_HERE_IS_PREVIOUS_OFFER[lang], true);
-  } catch (ex) {
-    appApiAiApp.ask(RESPONSE_NO_MORE_IN_LIST[lang])
-  }
+    try {
+        var nextOffer = offersPresented[index - 1]
+        showOneOffer(appApiAiApp, nextOffer, RESPONSE_HERE_IS_PREVIOUS_OFFER[lang], true);
+    } catch (ex) {
+        appApiAiApp.ask(RESPONSE_NO_MORE_IN_LIST[lang])
+    }
 
 }
 
@@ -113,84 +113,84 @@ function showPreviousOffer(appApiAiApp) {
 //#region list offers
 
 function handleAnswerOnScreen(res, appApiAiApp) {
-  const lang = appApiAiApp.getUserLocale();
-  if (res.length == 0) {
-    appApiAiApp.ask(RESPONSE_NO_OFFER_MATCHING[lang]);
-  } else if (res.length == 1) {
-    showOneOffer(appApiAiApp, res[0], RESPONSE_THIS_OFFER_MATCHES[lang]);
-  } else if (res.length > 1 && res.length <= 10) {
-    answerWithCarousel(appApiAiApp, res);
-  } else if (res.length > 10 && res.length <= 30) {
-    answerWithList(appApiAiApp, res);
-  } else if (res.length > 30) {
-    appApiAiApp.ask(RESPONSE_TOO_MANY_OFFERS[lang]);
-    // TODO help narrow research
-  }
+    const lang = appApiAiApp.getUserLocale();
+    if (res.length == 0) {
+        appApiAiApp.ask(RESPONSE_NO_OFFER_MATCHING[lang]);
+    } else if (res.length == 1) {
+        showOneOffer(appApiAiApp, res[0], RESPONSE_THIS_OFFER_MATCHES[lang]);
+    } else if (res.length > 1 && res.length <= 10) {
+        answerWithCarousel(appApiAiApp, res);
+    } else if (res.length > 10 && res.length <= 30) {
+        answerWithList(appApiAiApp, res);
+    } else if (res.length > 30) {
+        appApiAiApp.ask(RESPONSE_TOO_MANY_OFFERS[lang]);
+        // TODO help narrow research
+    }
 }
 
 function showOneOffer(appApiAiApp, offer, sentence, fromList = false) {
-  const lang = appApiAiApp.getUserLocale();
-  var body = offer.Description.slice(0, 250).replace("\n", "  ") + "..."
+    const lang = appApiAiApp.getUserLocale();
+    var body = offer.Description.slice(0, 250).replace("\n", "  ") + "..."
 
-  let parameters = {};
-  parameters[CONTEXT_PARAMETER_Offer_presented] = offer;
-  appApiAiApp.setContext(CONTEXT_OFFER_DETAIL, 2, parameters)
-
-  if (fromList) {
     let parameters = {};
-    parameters[CONTEXT_PARAMETER_Offers_presented] = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-    appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
-  }
+    parameters[CONTEXT_PARAMETER_Offer_presented] = offer;
+    appApiAiApp.setContext(CONTEXT_OFFER_DETAIL, 2, parameters)
 
-  appApiAiApp.ask(appApiAiApp.buildRichResponse()
-    .addSuggestions(fromList ? [REQUEST_PREVIOUS_OFFER[lang], REQUEST_NEXT_OFFER[lang]] : []) // TODO no next offer if end of list
-    .addSimpleResponse(sentence)
-    .addBasicCard(
-      appApiAiApp.buildBasicCard(body)
-      .setTitle(offer.Poste)
-      .setSubtitle(offer.Contrat + ", " + offer.Lieu)
-      .addButton(REQUEST_SEE_ONLINE[lang], offer.url)
-      .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "test")
-    )
-  );
+    if (fromList) {
+        let parameters = {};
+        parameters[CONTEXT_PARAMETER_Offers_presented] = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+        appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+    }
+
+    appApiAiApp.ask(appApiAiApp.buildRichResponse()
+        .addSuggestions(fromList ? [REQUEST_PREVIOUS_OFFER[lang], REQUEST_NEXT_OFFER[lang]] : []) // TODO no next offer if end of list
+        .addSimpleResponse(sentence)
+        .addBasicCard(
+            appApiAiApp.buildBasicCard(body)
+            .setTitle(offer.Poste)
+            .setSubtitle(offer.Contrat + ", " + offer.Lieu)
+            .addButton(REQUEST_SEE_ONLINE[lang], offer.url)
+            .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "test")
+        )
+    );
 }
 
 function answerWithCarousel(appApiAiApp, listOffers) {
-  const lang = appApiAiApp.getUserLocale();
-  var items = listOffers.map(offer => {
-    return appApiAiApp.buildOptionItem(offer.Poste, [])
-      .setTitle(offer.Poste)
-      .setDescription(offer.Contrat + ", " + offer.Lieu);
-  });
+    const lang = appApiAiApp.getUserLocale();
+    var items = listOffers.map(offer => {
+        return appApiAiApp.buildOptionItem(offer.Poste, [])
+            .setTitle(offer.Poste)
+            .setDescription(offer.Contrat + ", " + offer.Lieu);
+    });
 
-  let parameters = {};
-  parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
-  appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+    let parameters = {};
+    parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
+    appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
 
-  appApiAiApp.askWithCarousel(
-    appApiAiApp.buildRichResponse()
-    .addSimpleResponse(RESPONSE_THOSE_OFFERS_MATCH[lang]),
-    appApiAiApp.buildCarousel()
-    .addItems(items)
-  );
+    appApiAiApp.askWithCarousel(
+        appApiAiApp.buildRichResponse()
+        .addSimpleResponse(RESPONSE_THOSE_OFFERS_MATCH[lang]),
+        appApiAiApp.buildCarousel()
+        .addItems(items)
+    );
 }
 
 function answerWithList(appApiAiApp, listOffers) {
-  const lang = appApiAiApp.getUserLocale();
-  var items = listOffers.map(offer => {
-    return appApiAiApp.buildOptionItem(offer.Poste, [offer.url])
-      .setTitle(offer.Poste)
-      .setDescription(offer.Contrat + ", " + offer.Lieu);
-  });
+    const lang = appApiAiApp.getUserLocale();
+    var items = listOffers.map(offer => {
+        return appApiAiApp.buildOptionItem(offer.Poste, [offer.url])
+            .setTitle(offer.Poste)
+            .setDescription(offer.Contrat + ", " + offer.Lieu);
+    });
 
-  let parameters = {};
-  parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
-  appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+    let parameters = {};
+    parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
+    appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
 
-  appApiAiApp.askWithList(RESPONSE_THOSE_OFFERS_MATCH[lang],
-    appApiAiApp.buildList()
-    .addItems(items)
-  );
+    appApiAiApp.askWithList(RESPONSE_THOSE_OFFERS_MATCH[lang],
+        appApiAiApp.buildList()
+        .addItems(items)
+    );
 }
 
 //#endregion
@@ -199,45 +199,45 @@ function answerWithList(appApiAiApp, listOffers) {
 //#region SPEAKING API
 
 function handleAnswerNoScreen(res, appApiAiApp) {
-  const lang = appApiAiApp.getUserLocale();
+    const lang = appApiAiApp.getUserLocale();
 
-  if (res.length == 0) {
-    appApiAiApp.ask(addSpeak("<p><s>No offers matching your request.</s> <s>Do you want to ask something else ?</s>"));
-  } else if (res.length == 1) {
-    appApiAiApp.ask(appApiAiApp.buildRichResponse()
-      .addSimpleResponse("There is one offer matching your request. \n")
-      .addSimpleResponse(tellOneOffer(appApiAiApp, res[0], true))
-    )
-  } else if (res.length > 1 && res.length <= 10) {
-    appApiAiApp.ask(appApiAiApp.buildRichResponse()
-      .addSimpleResponse("There several offers matching your request. \n")
-      .addSimpleResponse(addSpeak('After every offer you can say next, select or quit'))
-      .addSimpleResponse(tellOneOffer(appApiAiApp, res[0]))
-    )
-  }
+    if (res.length == 0) {
+        appApiAiApp.ask(addSpeak("<p><s>No offers matching your request.</s> <s>Do you want to ask something else ?</s>"));
+    } else if (res.length == 1) {
+        appApiAiApp.ask(appApiAiApp.buildRichResponse()
+            .addSimpleResponse("There is one offer matching your request. \n")
+            .addSimpleResponse(tellOneOffer(appApiAiApp, res[0], true))
+        )
+    } else if (res.length > 1 && res.length <= 10) {
+        appApiAiApp.ask(appApiAiApp.buildRichResponse()
+            .addSimpleResponse("There several offers matching your request. \n")
+            .addSimpleResponse(addSpeak('After every offer you can say next, select or quit'))
+            .addSimpleResponse(tellOneOffer(appApiAiApp, res[0]))
+        )
+    }
 }
 
 
 
 function addSpeak(s) {
-  return '<speak>' + s + '</speak>';
+    return '<speak>' + s + '</speak>';
 }
 
 function tellOneOffer(appApiAiApp, offer, addDescription = false) {
-  let answer = 'It is a ' +
-    offer.Contrat +
-    ' as ' +
-    offer.Poste +
-    '\n'
+    let answer = 'It is a ' +
+        offer.Contrat +
+        ' as ' +
+        offer.Poste +
+        '\n'
 
-  if (addDescription) {
-    answer = answer +
-      'Here is the description <break time="1" />' +
-      offer.Description +
-      '\n'
-  }
+    if (addDescription) {
+        answer = answer +
+            'Here is the description <break time="1" />' +
+            offer.Description +
+            '\n'
+    }
 
-  return addSpeak(answer);
+    return addSpeak(answer);
 }
 
 //#endregion
@@ -252,22 +252,22 @@ const URL_RH_root = "https://sogetifrance-recrute.talent-soft.com";
 const Datastore = require('@google-cloud/datastore');
 const projectId = 'assistant-rh-sogeti';
 const datastore = Datastore({
-  projectId: projectId
+    projectId: projectId
 });
 
 function dataGetter(city, nb) {
-  var city_cleaned = city.toLowerCase();
-  var query = datastore.createQuery("Offer")
-    .filter('Lieu', '=', city_cleaned);
-  if (nb) {
-    // BUG if nb == 0
-    query = query.limit(nb);
-  }
+    var city_cleaned = city.toLowerCase();
+    var query = datastore.createQuery("Offer")
+        .filter('Lieu', '=', city_cleaned);
+    if (nb) {
+        // BUG if nb == 0
+        query = query.limit(nb);
+    }
 
-  return datastore.runQuery(query)
-    .then(res => {
-      return res[0];
-    })
+    return datastore.runQuery(query)
+        .then(res => {
+            return res[0];
+        })
 
 };
 
@@ -297,9 +297,6 @@ function getOffersUrl() {
             var promises = [];
             for (var i = 0; i < list_url_pages.length; i++) {
                 promises.push(getHtml(list_url_pages[i])
-                    .catch(err => {
-                        console.log(err);
-                    })
                     .then(res => {
                         var doc = cheerio.load(res);
                         var list_url_offers_this_page = [];
@@ -353,11 +350,13 @@ const URL = "url";
 
 const DESCRIPTION_SHORT = "Description";
 const POSTE_SHORT = "Poste";
-const LOCALISATION_SHORT = "Localisation";
 const METIER_SHORT = "Metier";
+const VILLE = "Ville";
+const DEPARTEMENT = "Departement";
+const REGION = "Region";
 
 var SHORT_KEY = {};
-[CONTRAT, DESCRIPTION, POSTE, LIEU, LOCALISATION, METIER, PROFIL, URL]
+[CONTRAT, DESCRIPTION, POSTE, LIEU, LOCALISATION, METIER, PROFIL, URL, VILLE, DEPARTEMENT, REGION]
 .forEach(key => {
     switch (key) {
         case (DESCRIPTION):
@@ -365,9 +364,6 @@ var SHORT_KEY = {};
             break;
         case (POSTE):
             SHORT_KEY[key] = POSTE_SHORT
-            break;
-        case (LOCALISATION):
-            SHORT_KEY[key] = LOCALISATION_SHORT
             break;
         case (METIER):
             SHORT_KEY[key] = METIER_SHORT
@@ -379,6 +375,9 @@ var SHORT_KEY = {};
 })
 
 function IsShortKey(key) {
+    if (key == 'validated') {
+        return true;
+    }
     return Object.keys(SHORT_KEY)
         .map(longKey => {
             return SHORT_KEY[longKey];
@@ -412,70 +411,121 @@ class Offer {
     }
 
     getContent() {
-
-        if (this.html != undefined) {
-            var $ = cheerio.load(this.html);
-            var content = $('#contenu-ficheoffre').first();
-            var list = content.find('h3').slice(1)
-                .each((i, el) => {
-                    let key = getValueTag(el.children[0]);
-                    if (IsLongKey(key)) {
-                        var value = getNextValue(el);
-                        var valueCleaned = cleanValue(key, value);
-                        this[SHORT_KEY[key]] = valueCleaned;
-                    }
-                });
+        var $ = cheerio.load(this.html);
+        var content = $('#contenu-ficheoffre').first();
+        var promises = [];
+        var list = content.find('h3').slice(1)
+            .each((i, el) => {
+                let key = getValueTag(el.children[0]);
+                if (IsLongKey(key)) {
+                    var value = getNextValue(el);
+                    promises.push(cleanValue(key, value).then(valuesCleaned => {
+                        valuesCleaned.forEach(valueCleaned => {
+                            this[valueCleaned.key] = valueCleaned.value;
+                        })
+                    }))
+                }
+            });
+        return Promise.all(promises).then(data => {
             this.validateOffer();
             return 1;
-        }
-        return 0;
+        })
+        
     }
 
     validateOffer() {
-        if (this[LIEU] && this[LIEU] != "") {
+        if (this[VILLE] && this[DEPARTEMENT] && this[REGION]) {
             this.validated = true;
         } else {
             this.validated = false;
-            console.log(this[LIEU]);
         }
     }
 }
 
+function cleanApi(url){
+    return getHtml(url)
+    .then(clean => {
+        return clean[0] ? clean[0].nom : undefined;
+    })
+}
+
+function cleanCity(city){
+    return cleanApi(`https://geo.api.gouv.fr/communes?nom=${city}&fields=nom&format=json`)
+}
+function cleanRegion(region) {
+    return cleanApi(`https://geo.api.gouv.fr/regions?nom=${region}&fields=nom`)
+}
+function cleanDepartement(dept) {
+    return cleanApi(`https://geo.api.gouv.fr/departements?nom=${dept}&fields=nom`)
+}
+
+function cleanLocalisation(localisation){
+    const region = localisation.split(',')[0];
+    const dept = localisation.split(',')[1];
+    var valuesCleaned = [];
+    return cleanRegion(region)
+    .then(regionCleaned => {
+        valuesCleaned.push({
+            key: REGION,
+            value: regionCleaned
+        })
+    })
+    .then(data => {
+        return cleanDepartement(dept)
+        .then(deptCleaned => {
+            valuesCleaned.push({
+                key: DEPARTEMENT,
+                value: deptCleaned
+            })
+            return valuesCleaned;
+        })
+    })
+}
+
+
 function cleanValue(key, value) {
-    const specialCars = [',', '/', '(', ')', '&', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
     if (key == LIEU) {
-        specialCars.forEach(c => {
-            if (value.includes(c)) {
-                value = "";
-            }
-        });
-        return value.toLowerCase();
+        return cleanCity(value)
+        .then(cityCleaned => {
+            return [{
+                key: VILLE,
+                value: cityCleaned
+            }]
+        })
     }
-    if (key == CONTRAT) {
+    else if (key == LOCALISATION) {
+        return cleanLocalisation(value)
+    }
+    else if (key == CONTRAT) {
         if (value.includes("CDI")) {
-            return "CDI";
+            value = "CDI";
         }
         if (value.includes("CDD")) {
-            return "CDD";
+            value = "CDD";
         }
         if (value.includes("Contrat d'apprentissage")) {
-            return "Contrat d'apprentissage";
+            value = "Contrat d'apprentissage";
         }
         if (value.includes("Stage conventionné")) {
-            return "Stage";
+            value = "Stage";
         }
         if (value.includes("Contrat de professionnalisation")) {
-            return "Contrat de professionnalisation";
+            value = "Contrat de professionnalisation";
         }
     }
-    if (key == POSTE) {
-        return value.replace(" H/F", "").replace("(H/F)", "");
-    }
-    if (key == LOCALISATION) {
-        return value.split(',')[0];
+    else if (key == POSTE) {
+        value = value.replace(" H/F", "").replace("(H/F)", "");
+        key = POSTE_SHORT;
     }
 
-    return value;
+    valuesCleaned = [{
+        key: key,
+        value: value
+    }]
+
+    return new Promise((resolve,reject) => {
+        resolve(valuesCleaned);
+    });
 }
 
 function getValueTag(el) {
@@ -630,29 +680,28 @@ function deleteAllOffers() {
 function updateAllOffers() {
     getAllExistingOffers().then(existingOffers => {
         getOffersData()
-        .then(listOffers => {
-            // Saving all new offers
-            var existingUrls = getAllExistingUrls(existingOffers);
-            var numberInvalid = 0;
-            var numberNew = 0;
-            listOffers.forEach(offer => {
-                if (offer.validated && !existingUrls.includes(offer.url)) {
-                    saveOffer(offer);
-                    numberNew ++;
-                }
-                else{
-                    if (!offer.validated){
-                        numberInvalid ++;
+            .then(listOffers => {
+                // Saving all new offers
+                var existingUrls = getAllExistingUrls(existingOffers);
+                var numberInvalid = 0;
+                var numberNew = 0;
+                listOffers.forEach(offer => {
+                    if (offer.validated && !existingUrls.includes(offer.url)) {
+                        saveOffer(offer);
+                        numberNew++;
+                    } else {
+                        if (!offer.validated) {
+                            numberInvalid++;
+                        }
                     }
-                }
-            })
+                })
 
-            console.log(numberInvalid + " invalid offers");
-            console.log(numberNew + " new offers saved");
+                console.log(numberInvalid + " invalid offers");
+                console.log(numberNew + " new offers saved");
 
-            //TODO Remove old offers
+                //TODO Remove old offers
 
-        });
+            });
 
     })
 }
@@ -668,11 +717,11 @@ const EN_GB = "en-GB";
 const EN_US = "en-US";
 
 function NewSentence(english, french) {
-  var sentence = {};
-  sentence[FR_FR] = french;
-  sentence[EN_GB] = english;
-  sentence[EN_US] = english;
-  return sentence;
+    var sentence = {};
+    sentence[FR_FR] = french;
+    sentence[EN_GB] = english;
+    sentence[EN_US] = english;
+    return sentence;
 }
 
 const RESPONSE_THE_OFFER = NewSentence('Here is the offer you want', "Voilà l'offre qui vous intéresse");

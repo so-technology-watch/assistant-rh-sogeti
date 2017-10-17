@@ -19,3 +19,4 @@ Follow activity on http://127.0.0.1:4040
 
 Debug with `functions debug agent`
 
+https://us-central1-assistant-rh-sogeti.cloudfunctions.net/agent

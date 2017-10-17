@@ -275,7 +275,7 @@ function dataGetter(city, nb) {
 
 
 
-// Parser
+//#region Parser
 
 function getHtml(url) {
     return new Promise(function (resolve, reject) {
@@ -413,8 +413,6 @@ class Offer {
 
     getContent() {
 
-      console.log("Getting Content of " + this.url);
-
         if (this.html != undefined) {
             var $ = cheerio.load(this.html);
             var content = $('#contenu-ficheoffre').first();
@@ -424,7 +422,6 @@ class Offer {
                     if (IsLongKey(key)) {
                         var value = getNextValue(el);
                         var valueCleaned = cleanValue(key, value);
-                        console.log("Getting key" + key);
                         this[SHORT_KEY[key]] = valueCleaned;
                     }
                 });
@@ -659,6 +656,8 @@ function updateAllOffers() {
 
     })
 }
+
+//#endregion
 
 
 //#region LANGAGE MANAGEMENT

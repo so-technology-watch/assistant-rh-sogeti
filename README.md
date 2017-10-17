@@ -1,7 +1,14 @@
 # assistant-rh-sogeti
 
+Start Google Cloud Emulator
 
-To launch a server locally :
+`functions start`
+
+Deploy the agent
+
+`functions deploy agent --trigger-http`
+
+Export port 8010 online
 
 `ngrok http 8010`
 
@@ -10,6 +17,6 @@ and add `/us-central1/agent`
 
 Follow activity on http://127.0.0.1:4040
 
-Test the App with `functions call agent --file test_message.json`
 Debug with `functions debug agent`
 
+https://us-central1-assistant-rh-sogeti.cloudfunctions.net/agent

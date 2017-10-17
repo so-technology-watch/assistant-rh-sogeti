@@ -1,0 +1,5 @@
+{
+    "code-runner.executorMap": {
+        "javascript": "functions call agent --file test_message.json"
+    }
+}

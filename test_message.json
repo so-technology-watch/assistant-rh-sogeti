@@ -18,14 +18,14 @@
                 {
                     "rawInputs": [
                         {
-                            "query": "nantes",
+                            "query": "récupère les nouvelles offres",
                             "inputType": "KEYBOARD"
                         }
                     ],
                     "arguments": [
                         {
-                            "rawText": "nantes",
-                            "textValue": "nantes",
+                            "rawText": "récupère les nouvelles offres",
+                            "textValue": "récupère les nouvelles offres",
                             "name": "text"
                         }
                     ],
@@ -33,14 +33,14 @@
                 }
             ],
             "user": {
-                "locale": "en-US",
-                "userId": "AP8TWv4_8g7gILkrkJLhq0WxuumE"
+                "locale": "fr-FR",
+                "userId": "ABwppHEEkU-uKeVuTO57uTaWA5fQY_e4tdCAkwlhQim2oZlyTmR32UbI_wxm5ktUOv9SrWdy7q17wOezTi6QAvIA"
             },
             "device": {},
             "conversation": {
-                "conversationId": "1506584412406",
+                "conversationId": "1508228601044",
                 "type": "ACTIVE",
-                "conversationToken": "[\"actions_capability_audio_output\",\"actions_capability_screen_output\",\"b740809b-aaea-4c77-b191-b04d2a2263dd_id_dialog_context\",\"getoffers_dialog_context\",\"getoffers_dialog_params_geo-city\",\"google_assistant_input_type_keyboard\"]"
+                "conversationToken": "[]"
             },
             "availableSurfaces": [
                 {
@@ -56,56 +56,46 @@
             ]
         }
     },
-    "id": "83bf3ce1-1d09-4650-918e-bb015a75fe32",
-    "timestamp": "2017-09-28T07:40:25.684Z",
-    "lang": "en",
+    "id": "250bee8d-f6ac-4d56-a942-3b16b788d1e4",
+    "timestamp": "2017-10-17T08:23:31.182Z",
+    "lang": "fr-fr",
     "result": {
         "source": "agent",
-        "resolvedQuery": "nantes",
+        "resolvedQuery": "récupère les nouvelles offres",
         "speech": "",
-        "action": "getOffers",
+        "action": "parseOffers",
         "actionIncomplete": false,
-        "parameters": {
-            "geo-city": "Nantes"
-        },
+        "parameters": {},
         "contexts": [
             {
                 "name": "actions_capability_screen_output",
-                "parameters": {
-                    "geo-city": "Nantes",
-                    "geo-city.original": "nantes"
-                },
+                "parameters": {},
                 "lifespan": 0
             },
             {
                 "name": "actions_capability_audio_output",
-                "parameters": {
-                    "geo-city": "Nantes",
-                    "geo-city.original": "nantes"
-                },
+                "parameters": {},
                 "lifespan": 0
             },
             {
                 "name": "google_assistant_input_type_keyboard",
-                "parameters": {
-                    "geo-city": "Nantes",
-                    "geo-city.original": "nantes"
-                },
+                "parameters": {},
                 "lifespan": 0
             }
         ],
         "metadata": {
-            "intentId": "b740809b-aaea-4c77-b191-b04d2a2263dd",
+            "intentId": "a9302291-e60d-466f-85e5-9b6cb41593d4",
             "webhookUsed": "true",
             "webhookForSlotFillingUsed": "false",
-            "nluResponseTime": 8,
-            "intentName": "getOffers"
+            "nluResponseTime": 12,
+            "intentName": "parseOffers"
         },
         "fulfillment": {
             "speech": "",
             "messages": [
                 {
                     "type": 0,
+                    "id": "21b9462c-0de7-4c7e-933d-77890aa08705",
                     "speech": ""
                 }
             ]
@@ -116,5 +106,5 @@
         "code": 200,
         "errorType": "success"
     },
-    "sessionId": "1506584412406"
+    "sessionId": "1508228601044"
 }

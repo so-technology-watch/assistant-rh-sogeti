@@ -2,7 +2,6 @@
 
 const functions = require('firebase-functions');
 const ApiAiApp = require('actions-on-google').ApiAiApp;
-const request = require('request');
 const cheerio = require('cheerio');
 
 const MAP_GETOFFERS = "getOffers";
@@ -277,19 +276,22 @@ function dataGetter(city, nb) {
 
 //#region Parser
 
+const axios = require('axios');
+const http = require('http');
+const https = require('https');
+
 function getHtml(url) {
-    return new Promise(function (resolve, reject) {
-        request(url, function (error, res, html) {
-            if (!error) {
-                resolve(html);
-            } else {
-                reject(error);
-            }
-        });
-    });
+    return axios.request({
+        url: url,
+        method: 'get'
+    }).catch(err => {
+        return getHtml(url)
+    }).then(res => {
+        return res.data
+    })
 }
 
-function getOffersUrl() {
+function getOffersUrl() { 
 
     return getOffersPages()
         .then(list_url_pages => {
@@ -335,7 +337,7 @@ function getOffersPages() {
                 .each((i, el) => {
                     list_url_pages.push(el.attribs['href']);
                 });
-            return list_url_pages; //.slice(0, 1);
+            return list_url_pages;
         });
 }
 
@@ -390,23 +392,18 @@ function IsLongKey(key) {
         .includes(key);
 };
 
+var compt = 0;
+
 class Offer {
     constructor(url) {
         this.url = URL_RH_root + url;
     }
 
-    getOfferHtml() {
+    getOfferHtml(count = 0, err = "") {
         var offer = this;
-        return new Promise(function (resolve, reject) {
-            request(offer.url, function (error, res, html) {
-                if (!error) {
-                    offer.html = html;
-                    resolve(1);
-                } else {
-                    reject(error);
-                }
-            });
-        });
+        return getHtml(offer.url).then(html => {
+            offer.html = html
+        })
     }
 
     getContent() {
@@ -426,6 +423,7 @@ class Offer {
                 }
             });
         return Promise.all(promises).then(data => {
+            console.log('offer validated')
             this.validateOffer();
             return 1;
         })
@@ -561,15 +559,21 @@ function getOffersData(list_Offers) {
 
     console.log(list_Offers.length + " offres récupérées");
 
-    var promisesContent = [];
+    var promisesHtml = [];
     list_Offers.forEach(offer => {
-        promisesContent.push(offer.getOfferHtml().then(x => {return offer.getContent()}));
+        promisesHtml.push(offer.getOfferHtml());
     });
 
-    return Promise.all(promisesContent)
-        .then(listResponses => {
-            console.log("ALL DATA PARSED");
-            return list_Offers;
+    return Promise.all(promisesHtml)
+        .then(x => {
+            var promisesContent = []
+            list_Offers.forEach(offer => {
+                promisesContent.push(offer.getContent());
+            });
+            return Promise.all(promisesContent).then(x =>{
+                console.log("All Data Parsed")
+                return list_Offers;
+            })
         })
 }
 
@@ -647,6 +651,17 @@ function deleteAllOffers() {
                 }
             })
         })
+        console.log("All data deleted")
+    })
+}
+
+function deleteOffers(list) {
+    getAllExistingKeys(list).forEach(key => {
+        datastore.delete(key, err => {
+            if (err) {
+                console.log(err);
+            }
+        })
     })
 }
 
@@ -672,13 +687,22 @@ function updateAllOffers() {
                     numberInvalid++;
                 }
             })
-
             console.log(numberInvalid + " invalid offers");
+        })
+        getAllExistingOffers().then(existingOffers => {
+            const newUrls = newOffers.map(offer => {
+                return offer.url
+            })
+            const oldOffers = existingOffers.filter(offer => {
+                return !newUrls.includes(offer.url)
+            })
+            console.log(oldOffers.length + " old offers");
+            deleteOffers(oldOffers)
         })
     })
 }
 
-updateAllOffers()
+// updateAllOffers()
 
 //#endregion
 

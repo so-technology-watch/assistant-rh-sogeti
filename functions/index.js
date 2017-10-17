@@ -393,7 +393,6 @@ function IsLongKey(key) {
 class Offer {
     constructor(url) {
         this.url = URL_RH_root + url;
-
     }
 
     getOfferHtml() {
@@ -430,7 +429,7 @@ class Offer {
             this.validateOffer();
             return 1;
         })
-        
+
     }
 
     validateOffer() {
@@ -442,61 +441,62 @@ class Offer {
     }
 }
 
-function cleanApi(url){
+function cleanApi(url) {
     return getHtml(url)
-    .then(clean => {
-        return clean[0] ? clean[0].nom : undefined;
-    })
+        .then(clean => {
+            const cleanObject = JSON.parse(clean);
+            return cleanObject[0] ? cleanObject[0].nom : undefined;
+        })
 }
 
-function cleanCity(city){
-    return cleanApi(`https://geo.api.gouv.fr/communes?nom=${city}&fields=nom&format=json`)
+function cleanCity(city) {
+    return cleanApi(`https://geo.api.gouv.fr/communes?nom=${encodeURI(city)}&fields=nom&format=json`)
 }
+
 function cleanRegion(region) {
-    return cleanApi(`https://geo.api.gouv.fr/regions?nom=${region}&fields=nom`)
-}
-function cleanDepartement(dept) {
-    return cleanApi(`https://geo.api.gouv.fr/departements?nom=${dept}&fields=nom`)
+    return cleanApi(`https://geo.api.gouv.fr/regions?nom=${encodeURI(region)}&fields=nom`)
 }
 
-function cleanLocalisation(localisation){
+function cleanDepartement(dept) {
+    return cleanApi(`https://geo.api.gouv.fr/departements?nom=${encodeURI(dept)}&fields=nom`)
+}
+
+function cleanLocalisation(localisation) {
     const region = localisation.split(',')[0];
     const dept = localisation.split(',')[1];
     var valuesCleaned = [];
     return cleanRegion(region)
-    .then(regionCleaned => {
-        valuesCleaned.push({
-            key: REGION,
-            value: regionCleaned
-        })
-    })
-    .then(data => {
-        return cleanDepartement(dept)
-        .then(deptCleaned => {
+        .then(regionCleaned => {
             valuesCleaned.push({
-                key: DEPARTEMENT,
-                value: deptCleaned
+                key: REGION,
+                value: regionCleaned ? regionCleaned : region
             })
-            return valuesCleaned;
         })
-    })
+        .then(data => {
+            return cleanDepartement(dept)
+                .then(deptCleaned => {
+                    valuesCleaned.push({
+                        key: DEPARTEMENT,
+                        value: deptCleaned ? deptCleaned : dept
+                    })
+                    return valuesCleaned;
+                })
+        })
 }
 
 
 function cleanValue(key, value) {
     if (key == LIEU) {
         return cleanCity(value)
-        .then(cityCleaned => {
-            return [{
-                key: VILLE,
-                value: cityCleaned
-            }]
-        })
-    }
-    else if (key == LOCALISATION) {
+            .then(cityCleaned => {
+                return [{
+                    key: VILLE,
+                    value: cityCleaned
+                }]
+            })
+    } else if (key == LOCALISATION) {
         return cleanLocalisation(value)
-    }
-    else if (key == CONTRAT) {
+    } else if (key == CONTRAT) {
         if (value.includes("CDI")) {
             value = "CDI";
         }
@@ -512,18 +512,16 @@ function cleanValue(key, value) {
         if (value.includes("Contrat de professionnalisation")) {
             value = "Contrat de professionnalisation";
         }
-    }
-    else if (key == POSTE) {
+    } else if (key == POSTE) {
         value = value.replace(" H/F", "").replace("(H/F)", "");
-        key = POSTE_SHORT;
     }
 
-    valuesCleaned = [{
-        key: key,
+    const valuesCleaned = [{
+        key: SHORT_KEY[key],
         value: value
     }]
 
-    return new Promise((resolve,reject) => {
+    return new Promise((resolve, reject) => {
         resolve(valuesCleaned);
     });
 }
@@ -559,45 +557,20 @@ function getNextValue(el) {
     return value.trim();
 }
 
-function getOffersData() {
+function getOffersData(list_Offers) {
 
-    var list_Offers = [];
+    console.log(list_Offers.length + " offres récupérées");
 
-    return getOffersUrl()
-        .then(list => {
-            list_Offers = list;
-            console.log(list_Offers.length + " offres récupérées");
+    var promisesContent = [];
+    list_Offers.forEach(offer => {
+        promisesContent.push(offer.getOfferHtml().then(x => {return offer.getContent()}));
+    });
 
-            var promisesContent = [];
-            list_Offers.forEach(offer => {
-                promisesContent.push(offer.getOfferHtml());
-            });
-
-            return Promise.all(promisesContent)
-                .catch(err => {
-                    console.log(err)
-                })
-                .then(listResponses => {
-                    var allOk = listResponses.every(res => {
-                        return res == 1;
-                    });
-                    // console.log(allOk ? "Toutes les offres sont ok" : "Des offres ont des erreurs");
-
-                    if (allOk) {
-
-                        list_Offers.forEach(offer => {
-                            try {
-                                offer.getContent();
-                            } catch (err) {
-                                console.log(err);
-                            }
-                        })
-
-                        console.log("ALL DATA PARSED");
-                        return list_Offers;
-                    }
-                })
-        });
+    return Promise.all(promisesContent)
+        .then(listResponses => {
+            console.log("ALL DATA PARSED");
+            return list_Offers;
+        })
 }
 
 function saveOffer(offer) {
@@ -608,7 +581,7 @@ function saveOffer(offer) {
         data: []
     };
     Object.keys(offer).forEach(key => {
-        if (IsShortKey(key)) {
+        if (IsShortKey(key) && offer[key]) {
             if (key == DESCRIPTION_SHORT || key == PROFIL) {
                 entity.data.push({
                     name: key,
@@ -677,34 +650,35 @@ function deleteAllOffers() {
     })
 }
 
-function updateAllOffers() {
-    getAllExistingOffers().then(existingOffers => {
-        getOffersData()
-            .then(listOffers => {
-                // Saving all new offers
-                var existingUrls = getAllExistingUrls(existingOffers);
-                var numberInvalid = 0;
-                var numberNew = 0;
-                listOffers.forEach(offer => {
-                    if (offer.validated && !existingUrls.includes(offer.url)) {
-                        saveOffer(offer);
-                        numberNew++;
-                    } else {
-                        if (!offer.validated) {
-                            numberInvalid++;
-                        }
-                    }
-                })
-
-                console.log(numberInvalid + " invalid offers");
-                console.log(numberNew + " new offers saved");
-
-                //TODO Remove old offers
-
-            });
-
+function getNewOffers() {
+    return getAllExistingOffers().then(existingOffers => {
+        const existingUrls = getAllExistingUrls(existingOffers);
+        return getOffersUrl().then(offersUrls => {
+            return offersUrls.filter(newOffer => {
+                return !existingUrls.includes(newOffer.url);
+            })
+        })
     })
 }
+
+function updateAllOffers() {
+    getNewOffers().then(newOffers => {
+        getOffersData(newOffers).then(listOffers => {
+            // Saving all new offers
+            var numberInvalid = 0;
+            listOffers.forEach(offer => {
+                saveOffer(offer);
+                if (!offer.validated) {
+                    numberInvalid++;
+                }
+            })
+
+            console.log(numberInvalid + " invalid offers");
+        })
+    })
+}
+
+updateAllOffers()
 
 //#endregion
 

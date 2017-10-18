@@ -2,7 +2,6 @@
 
 const functions = require('firebase-functions');
 const ApiAiApp = require('actions-on-google').ApiAiApp;
-const cheerio = require('cheerio');
 
 const MAP_GETOFFERS = "getOffers";
 const MAP_SELECTINGOFFER = "getOffers.fallback";
@@ -276,22 +275,31 @@ function dataGetter(city, nb) {
 
 //#region Parser
 
-const axios = require('axios');
-const http = require('http');
-const https = require('https');
+const cheerio = require('cheerio');
+const request = require('request');
 
 function getHtml(url) {
-    return axios.request({
+    return new Promise((resolve, reject) => {
+        request(url, (error, res, html) => {
+            if (!error && res.statusCode == 200) {
+                resolve(html)
+            } else {
+                reject(error)
+            }
+        })
+
+    })
+    /*return axios.request({
         url: url,
         method: 'get'
     }).catch(err => {
-        return getHtml(url)
+        return getHtml(url).then(res => {return res})
     }).then(res => {
         return res.data
-    })
+    })*/
 }
 
-function getOffersUrl() { 
+function getOffersUrl() {
 
     return getOffersPages()
         .then(list_url_pages => {
@@ -401,33 +409,40 @@ class Offer {
 
     getOfferHtml(count = 0, err = "") {
         var offer = this;
-        return getHtml(offer.url).then(html => {
+        return getHtml(offer.url).catch(err => {
+            console.log("no html")
+        }).then(html => {
             offer.html = html
         })
     }
 
     getContent() {
-        var $ = cheerio.load(this.html);
-        var content = $('#contenu-ficheoffre').first();
-        var promises = [];
-        var list = content.find('h3').slice(1)
-            .each((i, el) => {
-                let key = getValueTag(el.children[0]);
-                if (IsLongKey(key)) {
-                    var value = getNextValue(el);
-                    promises.push(cleanValue(key, value).then(valuesCleaned => {
-                        valuesCleaned.forEach(valueCleaned => {
-                            this[valueCleaned.key] = valueCleaned.value;
-                        })
-                    }))
-                }
-            });
-        return Promise.all(promises).then(data => {
-            console.log('offer validated')
-            this.validateOffer();
-            return 1;
-        })
-
+        if (this.html) {
+            var $ = cheerio.load(this.html);
+            var content = $('#contenu-ficheoffre').first();
+            var promises = [];
+            var list = content.find('h3').slice(1)
+                .each((i, el) => {
+                    let key = getValueTag(el.children[0]);
+                    if (IsLongKey(key)) {
+                        var value = getNextValue(el);
+                        promises.push(cleanValue(key, value).then(valuesCleaned => {
+                            valuesCleaned.forEach(valueCleaned => {
+                                this[valueCleaned.key] = valueCleaned.value;
+                            })
+                        }))
+                    }
+                });
+            return Promise.all(promises).then(data => {
+                this.validateOffer();
+                return 1;
+            })
+        } else {
+            this.validated = false;
+            return new Promise((resolve, reject) => {
+                resolve(0)
+            })
+        }
     }
 
     validateOffer() {
@@ -441,9 +456,15 @@ class Offer {
 
 function cleanApi(url) {
     return getHtml(url)
+        .catch(err => {
+            console.log("no API answer")
+        })
         .then(clean => {
-            const cleanObject = JSON.parse(clean);
-            return cleanObject[0] ? cleanObject[0].nom : undefined;
+            if (clean && clean != "") {
+                const cleanObject = JSON.parse(clean);
+                return cleanObject[0] ? cleanObject[0].nom : undefined;
+            }
+            return undefined
         })
 }
 
@@ -570,7 +591,7 @@ function getOffersData(list_Offers) {
             list_Offers.forEach(offer => {
                 promisesContent.push(offer.getContent());
             });
-            return Promise.all(promisesContent).then(x =>{
+            return Promise.all(promisesContent).then(x => {
                 console.log("All Data Parsed")
                 return list_Offers;
             })
@@ -689,7 +710,7 @@ function updateAllOffers() {
             })
             console.log(numberInvalid + " invalid offers");
         })
-        getAllExistingOffers().then(existingOffers => {
+        /*getAllExistingOffers().then(existingOffers => {
             const newUrls = newOffers.map(offer => {
                 return offer.url
             })
@@ -698,11 +719,11 @@ function updateAllOffers() {
             })
             console.log(oldOffers.length + " old offers");
             deleteOffers(oldOffers)
-        })
+        })*/
     })
 }
 
-// updateAllOffers()
+updateAllOffers()
 
 //#endregion
 

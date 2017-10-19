@@ -1,7 +1,7 @@
 //#region init
 
 const functions = require('firebase-functions');
-const ApiAiApp = require('actions-on-google').ApiAiApp;
+const DialogflowApp = require('actions-on-google').DialogflowApp;
 
 const MAP_GETOFFERS = "getOffers";
 const MAP_SELECTINGOFFER = "getOffers.fallback";
@@ -19,9 +19,10 @@ const CONTEXT_PARAMETER_Offer_presented = 'Offer_presented'
 const CITY_Parameter = 'Ville';
 const REGION_Parameter = 'Region';
 const DEPT_Parameter = 'Departement';
+const TYPE_Parameter = 'Type';
 
 exports.agent = functions.https.onRequest((request, response) => {
-    var app = new ApiAiApp({
+    var app = new DialogflowApp({
         request: request,
         response: response
     });
@@ -40,8 +41,13 @@ function getOffers(app) {
     var city = app.getArgument(CITY_Parameter);
     var region = app.getArgument(REGION_Parameter);
     var dept = app.getArgument(DEPT_Parameter);
+    var type = app.getArgument(TYPE_Parameter);
 
-    dataGetter(city, dept, region)
+    if (!city && !region && !dept && !type){
+        app.ask(RESPONSE_NOT_ENOUGH_INFO)
+    }
+
+    dataGetter(city, dept, region, type)
         .catch(err => {
             console.log(err);
         })
@@ -253,13 +259,14 @@ const datastore = Datastore({
     projectId: projectId
 });
 
-function dataGetter(city, dept, region) {
+function dataGetter(city, dept, region, type) {
     return cleanCityDeptRegion(city, dept, region).then(cleanedPlace => {
         var query = datastore.createQuery("Offer")
             .filter('validated', '=', true)
-        query = cleanedPlace.city ? query.filter('Ville', '=', cleanedPlace.city) : query
-        query = cleanedPlace.region ? query.filter('Region', '=', cleanedPlace.region) : query
-        query = cleanedPlace.dept ? query.filter('Departement', '=', cleanedPlace.dept) : query
+        query = cleanedPlace.city ? query.filter(CITY_Parameter, '=', cleanedPlace.city) : query
+        query = cleanedPlace.region ? query.filter(REGION_Parameter, '=', cleanedPlace.region) : query
+        query = cleanedPlace.dept ? query.filter(DEPT_Parameter, '=', cleanedPlace.dept) : query
+        query = type ? query.filter('Contrat', '=', type) : query
 
         return datastore.runQuery(query)
             .then(res => {
@@ -744,21 +751,8 @@ function updateAllOffers() {
             })
             console.log(numberInvalid + " invalid offers");
         })
-        /* Ne pas utiliser
-        getAllExistingOffers().then(existingOffers => {
-            const newUrls = newOffers.map(offer => {
-                return offer.url
-            })
-            const oldOffers = existingOffers.filter(offer => {
-                return !newUrls.includes(offer.url)
-            })
-            console.log(oldOffers.length + " old offers");
-            //deleteOffers(oldOffers)
-        })*/
     })
 }
-
-// deleteAllOffers()
 
 
 //#endregion
@@ -786,15 +780,16 @@ const REQUEST_NEXT_OFFER = NewSentence('Next Offer', "Offre suivante");
 const RESPONSE_HERE_IS_NEXT_OFFER = NewSentence('Here is the next one', "Voilà l'offre suivante");
 
 const REQUEST_PREVIOUS_OFFER = NewSentence('Previous Offer', "Offre précédente");
-const RESPONSE_HERE_IS_PREVIOUS_OFFER = NewSentence('Here is the previous one', "Voilà l'offre suivante");
+const RESPONSE_HERE_IS_PREVIOUS_OFFER = NewSentence('Here is the previous one', "Voilà l'offre précédente");
 
 const RESPONSE_NO_MORE_IN_LIST = NewSentence('Sorry, no more offers in the list', "Désolé, il n'y a plus d'offres dans la liste");
 
 const RESPONSE_NO_OFFER_MATCHING = NewSentence('Sorry, no offers matching your request', "Désolé, aucune offre ne correspond à votre requête");
-const RESPONSE_TOO_MANY_OFFERS = NewSentence('Sorry, too many offers matching your request', "Désolé, il y a trop d'offres correspondant à votre requête");
+const RESPONSE_TOO_MANY_OFFERS = NewSentence('Sorry, too many offers matching your request', "Désolé, il y a trop d'offres correspondant à votre requête. Pouvez vous être plus précis?");
+const RESPONSE_NOT_ENOUGH_INFO = NewSentence('Can you please narrow your research to a city or a region?', "Il y a beaucoup d'offres en France. Pouvez vous être plus précis sur l'endroit ou le type?");
 
 const RESPONSE_THIS_OFFER_MATCHES = NewSentence('This offer matches your request', "Cette offre correspond à votre requête");
-const RESPONSE_THOSE_OFFERS_MATCH = NewSentence('Those offers match your request', "Ces offres correspondent à votre requête");
+const RESPONSE_THOSE_OFFERS_MATCH = NewSentence('Those offers match your request', "Voilà des offres susceptibles de vous intéresser");
 
 const REQUEST_SEE_ONLINE = NewSentence('See Online', "Voir en ligne");
 

@@ -17,11 +17,12 @@ const CONTEXT_OFFER_DETAIL = 'context_offer_detail'
 const CONTEXT_PARAMETER_Offers_presented = 'Offers_presented'
 const CONTEXT_PARAMETER_Offer_presented = 'Offer_presented'
 
-const CITY_Parameter = 'geo-city';
-const NUMBER_Parameter = 'number';
+const CITY_Parameter = 'Ville';
+const REGION_Parameter = 'Region';
+const DEPT_Parameter = 'Departement';
 
 exports.agent = functions.https.onRequest((request, response) => {
-    var appApiAiApp = new ApiAiApp({
+    var app = new ApiAiApp({
         request: request,
         response: response
     });
@@ -31,24 +32,25 @@ exports.agent = functions.https.onRequest((request, response) => {
     actionMap.set(MAP_NEXTOFFER, showNextOffer);
     actionMap.set(MAP_PREVIOUSOFFER, showPreviousOffer);
     actionMap.set(MAP_PARSEROFFERS, updateAllOffers);
-    let context = appApiAiApp.getContexts();
+    let context = app.getContexts();
     //Map Intent to functions
-    appApiAiApp.handleRequest(actionMap);
+    app.handleRequest(actionMap);
 })
 
-function getOffers(appApiAiApp) {
-    var city = appApiAiApp.getArgument(CITY_Parameter);
-    var nbOffers = parseInt(appApiAiApp.getArgument(NUMBER_Parameter));
+function getOffers(app) {
+    var city = app.getArgument(CITY_Parameter);
+    var region = app.getArgument(REGION_Parameter);
+    var dept = app.getArgument(DEPT_Parameter);
 
-    dataGetter(city, nbOffers)
+    dataGetter(city, dept, region)
         .catch(err => {
             console.log(err);
         })
         .then(res => {
-            if (appApiAiApp.hasSurfaceCapability(appApiAiApp.SurfaceCapabilities.SCREEN_OUTPUT)) {
-                handleAnswerOnScreen(res, appApiAiApp);
-            } else if (appApiAiApp.hasSurfaceCapability(appApiAiApp.SurfaceCapabilities.AUDIO_OUTPUT)) {
-                handleAnswerNoScreen(res, appApiAiApp);
+            if (app.hasSurfaceCapability(app.SurfaceCapabilities.SCREEN_OUTPUT)) {
+                handleAnswerOnScreen(res, app);
+            } else if (app.hasSurfaceCapability(app.SurfaceCapabilities.AUDIO_OUTPUT)) {
+                handleAnswerNoScreen(res, app);
             }
         })
 }
@@ -57,23 +59,23 @@ function getOffers(appApiAiApp) {
 
 //#region after selection
 
-function showSelectedOffer(appApiAiApp) {
-    let offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-    let titleSelected = appApiAiApp.getSelectedOption();
+function showSelectedOffer(app) {
+    let offersPresented = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+    let titleSelected = app.getSelectedOption();
 
     var offerSelected = offersPresented.find(offer => {
         return (offer.Poste == titleSelected);
     })
 
-    const lang = appApiAiApp.getUserLocale();
+    const lang = app.getUserLocale();
 
-    showOneOffer(appApiAiApp, offerSelected, RESPONSE_THE_OFFER[lang], true);
+    showOneOffer(app, offerSelected, RESPONSE_THE_OFFER[lang], true);
 }
 
-function showNextOffer(appApiAiApp) {
-    const lang = appApiAiApp.getUserLocale();
-    var offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-    var offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
+function showNextOffer(app) {
+    const lang = app.getUserLocale();
+    var offersPresented = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+    var offerPresented = app.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
 
     var index = offersPresented.findIndex(offer => {
         return (offer.Poste == offerPresented.Poste)
@@ -81,17 +83,17 @@ function showNextOffer(appApiAiApp) {
 
     try {
         var nextOffer = offersPresented[index + 1]
-        showOneOffer(appApiAiApp, nextOffer, RESPONSE_HERE_IS_NEXT_OFFER[lang], true);
+        showOneOffer(app, nextOffer, RESPONSE_HERE_IS_NEXT_OFFER[lang], true);
     } catch (ex) {
-        appApiAiApp.ask(RESPONSE_NO_MORE_IN_LIST[lang])
+        app.ask(RESPONSE_NO_MORE_IN_LIST[lang])
     }
 
 }
 
-function showPreviousOffer(appApiAiApp) {
-    const lang = appApiAiApp.getUserLocale();
-    var offersPresented = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-    var offerPresented = appApiAiApp.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
+function showPreviousOffer(app) {
+    const lang = app.getUserLocale();
+    var offersPresented = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+    var offerPresented = app.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
 
     var index = offersPresented.findIndex(offer => {
         return (offer.Poste == offerPresented.Poste)
@@ -99,9 +101,9 @@ function showPreviousOffer(appApiAiApp) {
 
     try {
         var nextOffer = offersPresented[index - 1]
-        showOneOffer(appApiAiApp, nextOffer, RESPONSE_HERE_IS_PREVIOUS_OFFER[lang], true);
+        showOneOffer(app, nextOffer, RESPONSE_HERE_IS_PREVIOUS_OFFER[lang], true);
     } catch (ex) {
-        appApiAiApp.ask(RESPONSE_NO_MORE_IN_LIST[lang])
+        app.ask(RESPONSE_NO_MORE_IN_LIST[lang])
     }
 
 }
@@ -110,83 +112,83 @@ function showPreviousOffer(appApiAiApp) {
 
 //#region list offers
 
-function handleAnswerOnScreen(res, appApiAiApp) {
-    const lang = appApiAiApp.getUserLocale();
+function handleAnswerOnScreen(res, app) {
+    const lang = app.getUserLocale();
     if (res.length == 0) {
-        appApiAiApp.ask(RESPONSE_NO_OFFER_MATCHING[lang]);
+        app.ask(RESPONSE_NO_OFFER_MATCHING[lang]);
     } else if (res.length == 1) {
-        showOneOffer(appApiAiApp, res[0], RESPONSE_THIS_OFFER_MATCHES[lang]);
+        showOneOffer(app, res[0], RESPONSE_THIS_OFFER_MATCHES[lang]);
     } else if (res.length > 1 && res.length <= 10) {
-        answerWithCarousel(appApiAiApp, res);
+        answerWithCarousel(app, res);
     } else if (res.length > 10 && res.length <= 30) {
-        answerWithList(appApiAiApp, res);
+        answerWithList(app, res);
     } else if (res.length > 30) {
-        appApiAiApp.ask(RESPONSE_TOO_MANY_OFFERS[lang]);
+        app.ask(RESPONSE_TOO_MANY_OFFERS[lang]);
         // TODO help narrow research
     }
 }
 
-function showOneOffer(appApiAiApp, offer, sentence, fromList = false) {
-    const lang = appApiAiApp.getUserLocale();
+function showOneOffer(app, offer, sentence, fromList = false) {
+    const lang = app.getUserLocale();
     var body = offer.Description.slice(0, 250).replace("\n", "  ") + "..."
 
     let parameters = {};
     parameters[CONTEXT_PARAMETER_Offer_presented] = offer;
-    appApiAiApp.setContext(CONTEXT_OFFER_DETAIL, 2, parameters)
+    app.setContext(CONTEXT_OFFER_DETAIL, 2, parameters)
 
     if (fromList) {
         let parameters = {};
-        parameters[CONTEXT_PARAMETER_Offers_presented] = appApiAiApp.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-        appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+        parameters[CONTEXT_PARAMETER_Offers_presented] = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+        app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
     }
 
-    appApiAiApp.ask(appApiAiApp.buildRichResponse()
+    app.ask(app.buildRichResponse()
         .addSuggestions(fromList ? [REQUEST_PREVIOUS_OFFER[lang], REQUEST_NEXT_OFFER[lang]] : []) // TODO no next offer if end of list
         .addSimpleResponse(sentence)
         .addBasicCard(
-            appApiAiApp.buildBasicCard(body)
+            app.buildBasicCard(body)
             .setTitle(offer.Poste)
-            .setSubtitle(offer.Contrat + ", " + offer.Lieu)
+            .setSubtitle(offer.Contrat + ", " + offer.Ville)
             .addButton(REQUEST_SEE_ONLINE[lang], offer.url)
-            .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "test")
+            .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "sogeti")
         )
     );
 }
 
-function answerWithCarousel(appApiAiApp, listOffers) {
-    const lang = appApiAiApp.getUserLocale();
+function answerWithCarousel(app, listOffers) {
+    const lang = app.getUserLocale();
     var items = listOffers.map(offer => {
-        return appApiAiApp.buildOptionItem(offer.Poste, [])
+        return app.buildOptionItem(offer.Poste, [])
             .setTitle(offer.Poste)
-            .setDescription(offer.Contrat + ", " + offer.Lieu);
+            .setDescription(offer.Contrat + ", " + offer.Ville);
     });
 
     let parameters = {};
     parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
-    appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+    app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
 
-    appApiAiApp.askWithCarousel(
-        appApiAiApp.buildRichResponse()
+    app.askWithCarousel(
+        app.buildRichResponse()
         .addSimpleResponse(RESPONSE_THOSE_OFFERS_MATCH[lang]),
-        appApiAiApp.buildCarousel()
+        app.buildCarousel()
         .addItems(items)
     );
 }
 
-function answerWithList(appApiAiApp, listOffers) {
-    const lang = appApiAiApp.getUserLocale();
+function answerWithList(app, listOffers) {
+    const lang = app.getUserLocale();
     var items = listOffers.map(offer => {
-        return appApiAiApp.buildOptionItem(offer.Poste, [offer.url])
+        return app.buildOptionItem(offer.Poste, [offer.url])
             .setTitle(offer.Poste)
-            .setDescription(offer.Contrat + ", " + offer.Lieu);
+            .setDescription(offer.Contrat + ", " + offer.Ville);
     });
 
     let parameters = {};
     parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
-    appApiAiApp.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+    app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
 
-    appApiAiApp.askWithList(RESPONSE_THOSE_OFFERS_MATCH[lang],
-        appApiAiApp.buildList()
+    app.askWithList(RESPONSE_THOSE_OFFERS_MATCH[lang],
+        app.buildList()
         .addItems(items)
     );
 }
@@ -196,21 +198,21 @@ function answerWithList(appApiAiApp, listOffers) {
 
 //#region SPEAKING API
 
-function handleAnswerNoScreen(res, appApiAiApp) {
-    const lang = appApiAiApp.getUserLocale();
+function handleAnswerNoScreen(res, app) {
+    const lang = app.getUserLocale();
 
     if (res.length == 0) {
-        appApiAiApp.ask(addSpeak("<p><s>No offers matching your request.</s> <s>Do you want to ask something else ?</s>"));
+        app.ask(addSpeak("<p><s>No offers matching your request.</s> <s>Do you want to ask something else ?</s>"));
     } else if (res.length == 1) {
-        appApiAiApp.ask(appApiAiApp.buildRichResponse()
+        app.ask(app.buildRichResponse()
             .addSimpleResponse("There is one offer matching your request. \n")
-            .addSimpleResponse(tellOneOffer(appApiAiApp, res[0], true))
+            .addSimpleResponse(tellOneOffer(app, res[0], true))
         )
     } else if (res.length > 1 && res.length <= 10) {
-        appApiAiApp.ask(appApiAiApp.buildRichResponse()
+        app.ask(app.buildRichResponse()
             .addSimpleResponse("There several offers matching your request. \n")
             .addSimpleResponse(addSpeak('After every offer you can say next, select or quit'))
-            .addSimpleResponse(tellOneOffer(appApiAiApp, res[0]))
+            .addSimpleResponse(tellOneOffer(app, res[0]))
         )
     }
 }
@@ -221,7 +223,7 @@ function addSpeak(s) {
     return '<speak>' + s + '</speak>';
 }
 
-function tellOneOffer(appApiAiApp, offer, addDescription = false) {
+function tellOneOffer(app, offer, addDescription = false) {
     let answer = 'It is a ' +
         offer.Contrat +
         ' as ' +
@@ -253,19 +255,19 @@ const datastore = Datastore({
     projectId: projectId
 });
 
-function dataGetter(city, nb) {
-    var city_cleaned = city.toLowerCase();
-    var query = datastore.createQuery("Offer")
-        .filter('Lieu', '=', city_cleaned);
-    if (nb) {
-        // BUG if nb == 0
-        query = query.limit(nb);
-    }
+function dataGetter(city, dept, region) {
+    return cleanCityDeptRegion(city, dept, region).then(cleanedPlace => {
+        var query = datastore.createQuery("Offer")
+            .filter('validated', '=', true)
+        query = cleanedPlace.city ? query.filter('Ville', '=', cleanedPlace.city) : query
+        query = cleanedPlace.region ? query.filter('Region', '=', cleanedPlace.region) : query
+        query = cleanedPlace.dept ? query.filter('Departement', '=', cleanedPlace.dept) : query
 
-    return datastore.runQuery(query)
-        .then(res => {
-            return res[0];
-        })
+        return datastore.runQuery(query)
+            .then(res => {
+                return res[0];
+            })
+    })
 
 };
 
@@ -457,7 +459,7 @@ class Offer {
     }
 
     validateOffer() {
-        if (this[VILLE] && this[DEPARTEMENT] && this[REGION]) {
+        if (this[VILLE]) {
             this.validated = true;
         } else {
             this.validated = false;
@@ -479,15 +481,42 @@ function cleanApi(url) {
 }
 
 function cleanCity(city) {
-    return cleanApi(`https://geo.api.gouv.fr/communes?nom=${encodeURI(city)}&fields=nom&format=json`)
+    return city ? cleanApi(`https://geo.api.gouv.fr/communes?nom=${encodeURI(city)}&fields=nom&format=json`) : new Promise((resolve, reject) => {
+        resolve(undefined)
+    })
 }
 
 function cleanRegion(region) {
-    return cleanApi(`https://geo.api.gouv.fr/regions?nom=${encodeURI(region)}&fields=nom`)
+    return region ? cleanApi(`https://geo.api.gouv.fr/regions?nom=${encodeURI(region)}&fields=nom`) : new Promise((resolve, reject) => {
+        resolve(undefined)
+    })
 }
 
-function cleanDepartement(dept) {
-    return cleanApi(`https://geo.api.gouv.fr/departements?nom=${encodeURI(dept)}&fields=nom`)
+function cleanDept(dept) {
+    return dept ? cleanApi(`https://geo.api.gouv.fr/departements?nom=${encodeURI(dept)}&fields=nom`) : new Promise((resolve, reject) => {
+        resolve(undefined)
+    })
+}
+
+function cleanCityDeptRegion(city, dept, region) {
+    var promises = []
+    var values = {}
+    promises.push(
+        cleanCity(city)
+        .then(cityCleaned => {
+            values.city = cityCleaned
+        }))
+    promises.push(cleanDept(dept)
+        .then(deptCleaned => {
+            values.dept = deptCleaned
+        }))
+    promises.push(cleanRegion(region)
+        .then(regionCleaned => {
+            values.region = regionCleaned
+        }))
+    return Promise.all(promises).then(list => {
+        return values;
+    })
 }
 
 function cleanLocalisation(localisation) {
@@ -502,7 +531,7 @@ function cleanLocalisation(localisation) {
             })
         })
         .then(data => {
-            return cleanDepartement(dept)
+            return cleanDept(dept)
                 .then(deptCleaned => {
                     valuesCleaned.push({
                         key: DEPARTEMENT,
@@ -616,7 +645,7 @@ function saveOffer(offer) {
         data: []
     };
     Object.keys(offer).forEach(key => {
-        if (IsShortKey(key) && offer[key]) {
+        if (IsShortKey(key) && offer[key] != undefined) {
             if (key == DESCRIPTION_SHORT || key == PROFIL) {
                 entity.data.push({
                     name: key,
@@ -713,14 +742,15 @@ function updateAllOffers() {
             // Saving all new offers
             var numberInvalid = 0;
             listOffers.forEach(offer => {
-                saveOffer(offer);
                 if (!offer.validated) {
                     numberInvalid++;
                 }
+                saveOffer(offer);
             })
             console.log(numberInvalid + " invalid offers");
         })
-        /*getAllExistingOffers().then(existingOffers => {
+        /* Ne pas utiliser
+        getAllExistingOffers().then(existingOffers => {
             const newUrls = newOffers.map(offer => {
                 return offer.url
             })
@@ -728,12 +758,12 @@ function updateAllOffers() {
                 return !newUrls.includes(offer.url)
             })
             console.log(oldOffers.length + " old offers");
-            deleteOffers(oldOffers)
+            //deleteOffers(oldOffers)
         })*/
     })
 }
 
-updateAllOffers()
+// deleteAllOffers()
 
 //#endregion
 
@@ -756,10 +786,10 @@ function NewSentence(english, french) {
 const RESPONSE_THE_OFFER = NewSentence('Here is the offer you want', "Voilà l'offre qui vous intéresse");
 
 const REQUEST_NEXT_OFFER = NewSentence('Next Offer', "Offre suivante");
-const RESPONSE_HERE_IS_NEXT_OFFER = NewSentence('Here is the next one', "Voilà l'offre l'offre suivante");
+const RESPONSE_HERE_IS_NEXT_OFFER = NewSentence('Here is the next one', "Voilà l'offre suivante");
 
 const REQUEST_PREVIOUS_OFFER = NewSentence('Previous Offer', "Offre précédente");
-const RESPONSE_HERE_IS_PREVIOUS_OFFER = NewSentence('Here is the previous one', "Voilà l'offre l'offre suivante");
+const RESPONSE_HERE_IS_PREVIOUS_OFFER = NewSentence('Here is the previous one', "Voilà l'offre suivante");
 const RESPONSE_NO_MORE_IN_LIST = NewSentence('Sorry, no more offers in the list', "Désolé, il n'y a plus d'offres dans la liste");
 
 const RESPONSE_NO_OFFER_MATCHING = NewSentence('Sorry, no offers matching your request', "Désolé, aucune offre ne correspond à votre requête");

@@ -2,8 +2,6 @@
 
 const functions = require('firebase-functions');
 const ApiAiApp = require('actions-on-google').ApiAiApp;
-const request = require('request');
-const cheerio = require('cheerio');
 
 const MAP_GETOFFERS = "getOffers";
 const MAP_SELECTINGOFFER = "getOffers.fallback";

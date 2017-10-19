@@ -8,12 +8,6 @@
     "request": "latest",
     "cheerio": "latest",
     "@google-cloud/datastore": "latest",
-    "actions-on-google": "latest",
-    "axios": "latest",
-    "cheerio": "latest",
-    "firebase-admin": "latest",
-    "firebase-functions": "latest",
-    "firebase-tools": "latest",
-    "request": "latest"
+    "actions-on-google": "latest"
   }
 }

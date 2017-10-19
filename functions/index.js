@@ -278,7 +278,18 @@ function dataGetter(city, nb) {
 const cheerio = require('cheerio');
 const request = require('request');
 
+
+
 function getHtml(url) {
+    const requestOptions = {
+        url: url,
+        method: 'GET',
+        timeout: 120000,
+        headers: {
+            'Accept-Charset': 'utf-8',
+            'User-Agent': 'my-reddit-client'
+        }
+    };
     return new Promise((resolve, reject) => {
         request(url, (error, res, html) => {
             if (!error && res.statusCode == 200) {
@@ -410,7 +421,7 @@ class Offer {
     getOfferHtml(count = 0, err = "") {
         var offer = this;
         return getHtml(offer.url).catch(err => {
-            console.log("no html")
+            //console.log(err)
         }).then(html => {
             offer.html = html
         })
@@ -457,14 +468,13 @@ class Offer {
 function cleanApi(url) {
     return getHtml(url)
         .catch(err => {
-            console.log("no API answer")
+            //console.log(err);
         })
         .then(clean => {
             if (clean && clean != "") {
                 const cleanObject = JSON.parse(clean);
                 return cleanObject[0] ? cleanObject[0].nom : undefined;
             }
-            return undefined
         })
 }
 

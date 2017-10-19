@@ -2,6 +2,8 @@
 
 const functions = require('firebase-functions');
 const ApiAiApp = require('actions-on-google').ApiAiApp;
+const request = require('request');
+const cheerio = require('cheerio');
 
 const MAP_GETOFFERS = "getOffers";
 const MAP_SELECTINGOFFER = "getOffers.fallback";
@@ -12,7 +14,6 @@ const MAP_PARSEROFFERS = "parseOffers";
 //WARNING no uppercase in context names
 const CONTEXT_LIST_OFFERS = 'context_list_offers'
 const CONTEXT_OFFER_DETAIL = 'context_offer_detail'
-
 
 const CONTEXT_PARAMETER_Offers_presented = 'Offers_presented'
 const CONTEXT_PARAMETER_Offer_presented = 'Offer_presented'
@@ -242,7 +243,6 @@ function tellOneOffer(app, offer, addDescription = false) {
 
 //#endregion
 
-
 //#region DATA GETTER FROM DATASTORE
 
 const URL_RH_website = "https://sogetifrance-recrute.talent-soft.com/offre-de-emploi/liste-offres.aspx";
@@ -302,14 +302,6 @@ function getHtml(url) {
         })
 
     })
-    /*return axios.request({
-        url: url,
-        method: 'get'
-    }).catch(err => {
-        return getHtml(url).then(res => {return res})
-    }).then(res => {
-        return res.data
-    })*/
 }
 
 function getOffersUrl() {
@@ -373,6 +365,7 @@ const URL = "url";
 
 const DESCRIPTION_SHORT = "Description";
 const POSTE_SHORT = "Poste";
+
 const METIER_SHORT = "Metier";
 const VILLE = "Ville";
 const DEPARTEMENT = "Departement";
@@ -434,6 +427,7 @@ class Offer {
             var $ = cheerio.load(this.html);
             var content = $('#contenu-ficheoffre').first();
             var promises = [];
+
             var list = content.find('h3').slice(1)
                 .each((i, el) => {
                     let key = getValueTag(el.children[0]);
@@ -463,6 +457,7 @@ class Offer {
             this.validated = true;
         } else {
             this.validated = false;
+
         }
     }
 }
@@ -582,6 +577,7 @@ function cleanValue(key, value) {
     return new Promise((resolve, reject) => {
         resolve(valuesCleaned);
     });
+
 }
 
 function getValueTag(el) {
@@ -635,6 +631,7 @@ function getOffersData(list_Offers) {
                 return list_Offers;
             })
         })
+
 }
 
 function saveOffer(offer) {
@@ -765,6 +762,7 @@ function updateAllOffers() {
 
 // deleteAllOffers()
 
+
 //#endregion
 
 
@@ -786,10 +784,12 @@ function NewSentence(english, french) {
 const RESPONSE_THE_OFFER = NewSentence('Here is the offer you want', "Voilà l'offre qui vous intéresse");
 
 const REQUEST_NEXT_OFFER = NewSentence('Next Offer', "Offre suivante");
+
 const RESPONSE_HERE_IS_NEXT_OFFER = NewSentence('Here is the next one', "Voilà l'offre suivante");
 
 const REQUEST_PREVIOUS_OFFER = NewSentence('Previous Offer', "Offre précédente");
 const RESPONSE_HERE_IS_PREVIOUS_OFFER = NewSentence('Here is the previous one', "Voilà l'offre suivante");
+
 const RESPONSE_NO_MORE_IN_LIST = NewSentence('Sorry, no more offers in the list', "Désolé, il n'y a plus d'offres dans la liste");
 
 const RESPONSE_NO_OFFER_MATCHING = NewSentence('Sorry, no offers matching your request', "Désolé, aucune offre ne correspond à votre requête");

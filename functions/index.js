@@ -33,9 +33,15 @@ exports.agent = functions.https.onRequest((request, response) => {
     actionMap.set(MAP_PREVIOUSOFFER, showPreviousOffer);
     actionMap.set(MAP_PARSEROFFERS, updateAllOffers);
     let context = app.getContexts();
-    //Map Intent to functions
     app.handleRequest(actionMap);
 })
+
+//#endregion
+
+
+//#region CONVERSATION API
+
+//#region GETOFFERS
 
 function getOffers(app) {
     var city = app.getArgument(CITY_Parameter);
@@ -59,10 +65,94 @@ function getOffers(app) {
             }
         })
 }
+//#region list offers
+
+function handleAnswerOnScreen(res, app) {
+    const lang = app.getUserLocale();
+    if (res.length == 0) {
+        app.ask(RESPONSE_NO_OFFER_MATCHING[lang]);
+    } else if (res.length == 1) {
+        showOneOffer(app, res[0], RESPONSE_THIS_OFFER_MATCHES[lang]);
+    } else if (res.length > 1 && res.length <= 10) {
+        answerWithCarousel(app, res);
+    } else if (res.length > 10 && res.length <= 30) {
+        answerWithList(app, res);
+    } else if (res.length > 30) {
+        app.ask(RESPONSE_TOO_MANY_OFFERS[lang]);
+        // TODO help narrow research
+    }
+}
+
+function answerWithCarousel(app, listOffers) {
+    const lang = app.getUserLocale();
+    var items = listOffers.map(offer => {
+        return app.buildOptionItem(offer.Poste, [])
+            .setTitle(offer.Poste)
+            .setDescription(offer.Contrat + ", " + offer.Ville);
+    });
+
+    let parameters = {};
+    parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
+    app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+
+    app.askWithCarousel(
+        app.buildRichResponse()
+            .addSimpleResponse(RESPONSE_THOSE_OFFERS_MATCH[lang]),
+        app.buildCarousel()
+            .addItems(items)
+    );
+}
+
+function answerWithList(app, listOffers) {
+    const lang = app.getUserLocale();
+    var items = listOffers.map(offer => {
+        return app.buildOptionItem(offer.Poste, [offer.url])
+            .setTitle(offer.Poste)
+            .setDescription(offer.Contrat + ", " + offer.Ville);
+    });
+
+    let parameters = {};
+    parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
+    app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+
+    app.askWithList(RESPONSE_THOSE_OFFERS_MATCH[lang],
+        app.buildList()
+            .addItems(items)
+    );
+}
 
 //#endregion
 
-//#region after selection
+//#endregion
+
+//#region SHOWSELECTEDOFFER NEXT PREVIOUS
+
+function showOneOffer(app, offer, sentence, fromList = false) {
+    const lang = app.getUserLocale();
+    var body = offer.Description.slice(0, 250).replace("\n", "  ") + "..."
+
+    let parameters = {};
+    parameters[CONTEXT_PARAMETER_Offer_presented] = offer;
+    app.setContext(CONTEXT_OFFER_DETAIL, 2, parameters)
+
+    if (fromList) {
+        let parameters = {};
+        parameters[CONTEXT_PARAMETER_Offers_presented] = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+        app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+    }
+
+    app.ask(app.buildRichResponse()
+        .addSuggestions(fromList ? [REQUEST_PREVIOUS_OFFER[lang], REQUEST_NEXT_OFFER[lang]] : []) // TODO no next offer if end of list
+        .addSimpleResponse(sentence)
+        .addBasicCard(
+        app.buildBasicCard(body)
+            .setTitle(offer.Poste)
+            .setSubtitle(offer.Contrat + ", " + offer.Ville)
+            .addButton(REQUEST_SEE_ONLINE[lang], offer.url)
+            .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "sogeti")
+        )
+    );
+}
 
 function showSelectedOffer(app) {
     let offersPresented = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
@@ -114,92 +204,6 @@ function showPreviousOffer(app) {
 }
 
 //#endregion
-
-//#region list offers
-
-function handleAnswerOnScreen(res, app) {
-    const lang = app.getUserLocale();
-    if (res.length == 0) {
-        app.ask(RESPONSE_NO_OFFER_MATCHING[lang]);
-    } else if (res.length == 1) {
-        showOneOffer(app, res[0], RESPONSE_THIS_OFFER_MATCHES[lang]);
-    } else if (res.length > 1 && res.length <= 10) {
-        answerWithCarousel(app, res);
-    } else if (res.length > 10 && res.length <= 30) {
-        answerWithList(app, res);
-    } else if (res.length > 30) {
-        app.ask(RESPONSE_TOO_MANY_OFFERS[lang]);
-        // TODO help narrow research
-    }
-}
-
-function showOneOffer(app, offer, sentence, fromList = false) {
-    const lang = app.getUserLocale();
-    var body = offer.Description.slice(0, 250).replace("\n", "  ") + "..."
-
-    let parameters = {};
-    parameters[CONTEXT_PARAMETER_Offer_presented] = offer;
-    app.setContext(CONTEXT_OFFER_DETAIL, 2, parameters)
-
-    if (fromList) {
-        let parameters = {};
-        parameters[CONTEXT_PARAMETER_Offers_presented] = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-        app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
-    }
-
-    app.ask(app.buildRichResponse()
-        .addSuggestions(fromList ? [REQUEST_PREVIOUS_OFFER[lang], REQUEST_NEXT_OFFER[lang]] : []) // TODO no next offer if end of list
-        .addSimpleResponse(sentence)
-        .addBasicCard(
-            app.buildBasicCard(body)
-            .setTitle(offer.Poste)
-            .setSubtitle(offer.Contrat + ", " + offer.Ville)
-            .addButton(REQUEST_SEE_ONLINE[lang], offer.url)
-            .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "sogeti")
-        )
-    );
-}
-
-function answerWithCarousel(app, listOffers) {
-    const lang = app.getUserLocale();
-    var items = listOffers.map(offer => {
-        return app.buildOptionItem(offer.Poste, [])
-            .setTitle(offer.Poste)
-            .setDescription(offer.Contrat + ", " + offer.Ville);
-    });
-
-    let parameters = {};
-    parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
-    app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
-
-    app.askWithCarousel(
-        app.buildRichResponse()
-        .addSimpleResponse(RESPONSE_THOSE_OFFERS_MATCH[lang]),
-        app.buildCarousel()
-        .addItems(items)
-    );
-}
-
-function answerWithList(app, listOffers) {
-    const lang = app.getUserLocale();
-    var items = listOffers.map(offer => {
-        return app.buildOptionItem(offer.Poste, [offer.url])
-            .setTitle(offer.Poste)
-            .setDescription(offer.Contrat + ", " + offer.Ville);
-    });
-
-    let parameters = {};
-    parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
-    app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
-
-    app.askWithList(RESPONSE_THOSE_OFFERS_MATCH[lang],
-        app.buildList()
-        .addItems(items)
-    );
-}
-
-//#endregion
-
 
 //#region SPEAKING API
 
@@ -278,9 +282,47 @@ function dataGetter(city, dept, region, type) {
 
 //#endregion
 
+//#region LANGAGE MANAGEMENT
 
 
-//#region Parser
+const FR_FR = "fr-FR";
+const EN_GB = "en-GB";
+const EN_US = "en-US";
+
+function NewSentence(english, french) {
+    var sentence = {};
+    sentence[FR_FR] = french;
+    sentence[EN_GB] = english;
+    sentence[EN_US] = english;
+    return sentence;
+}
+
+const RESPONSE_THE_OFFER = NewSentence('Here is the offer you want', "Voilà l'offre qui vous intéresse");
+
+const REQUEST_NEXT_OFFER = NewSentence('Next Offer', "Offre suivante");
+
+const RESPONSE_HERE_IS_NEXT_OFFER = NewSentence('Here is the next one', "Voilà l'offre suivante");
+
+const REQUEST_PREVIOUS_OFFER = NewSentence('Previous Offer', "Offre précédente");
+const RESPONSE_HERE_IS_PREVIOUS_OFFER = NewSentence('Here is the previous one', "Voilà l'offre précédente");
+
+const RESPONSE_NO_MORE_IN_LIST = NewSentence('Sorry, no more offers in the list', "Désolé, il n'y a plus d'offres dans la liste");
+
+const RESPONSE_NO_OFFER_MATCHING = NewSentence('Sorry, no offers matching your request', "Désolé, aucune offre ne correspond à votre requête");
+const RESPONSE_TOO_MANY_OFFERS = NewSentence('Sorry, too many offers matching your request', "Désolé, il y a trop d'offres correspondant à votre requête. Pouvez vous être plus précis?");
+const RESPONSE_NOT_ENOUGH_INFO = NewSentence('Can you please narrow your research to a city or a region?', "Il y a beaucoup d'offres en France. Pouvez vous être plus précis sur l'endroit ou le type?");
+
+const RESPONSE_THIS_OFFER_MATCHES = NewSentence('This offer matches your request', "Cette offre correspond à votre requête");
+const RESPONSE_THOSE_OFFERS_MATCH = NewSentence('Those offers match your request', "Voilà des offres susceptibles de vous intéresser");
+
+const REQUEST_SEE_ONLINE = NewSentence('See Online', "Voir en ligne");
+
+//#endregion
+
+//#endregion CONVERSATION API
+
+
+//#region NEW OFFERS PARSER
 
 const cheerio = require('cheerio');
 const request = require('request');
@@ -757,40 +799,3 @@ function updateAllOffers() {
 
 //#endregion
 
-
-//#region LANGAGE MANAGEMENT
-
-
-const FR_FR = "fr-FR";
-const EN_GB = "en-GB";
-const EN_US = "en-US";
-
-function NewSentence(english, french) {
-    var sentence = {};
-    sentence[FR_FR] = french;
-    sentence[EN_GB] = english;
-    sentence[EN_US] = english;
-    return sentence;
-}
-
-const RESPONSE_THE_OFFER = NewSentence('Here is the offer you want', "Voilà l'offre qui vous intéresse");
-
-const REQUEST_NEXT_OFFER = NewSentence('Next Offer', "Offre suivante");
-
-const RESPONSE_HERE_IS_NEXT_OFFER = NewSentence('Here is the next one', "Voilà l'offre suivante");
-
-const REQUEST_PREVIOUS_OFFER = NewSentence('Previous Offer', "Offre précédente");
-const RESPONSE_HERE_IS_PREVIOUS_OFFER = NewSentence('Here is the previous one', "Voilà l'offre précédente");
-
-const RESPONSE_NO_MORE_IN_LIST = NewSentence('Sorry, no more offers in the list', "Désolé, il n'y a plus d'offres dans la liste");
-
-const RESPONSE_NO_OFFER_MATCHING = NewSentence('Sorry, no offers matching your request', "Désolé, aucune offre ne correspond à votre requête");
-const RESPONSE_TOO_MANY_OFFERS = NewSentence('Sorry, too many offers matching your request', "Désolé, il y a trop d'offres correspondant à votre requête. Pouvez vous être plus précis?");
-const RESPONSE_NOT_ENOUGH_INFO = NewSentence('Can you please narrow your research to a city or a region?', "Il y a beaucoup d'offres en France. Pouvez vous être plus précis sur l'endroit ou le type?");
-
-const RESPONSE_THIS_OFFER_MATCHES = NewSentence('This offer matches your request', "Cette offre correspond à votre requête");
-const RESPONSE_THOSE_OFFERS_MATCH = NewSentence('Those offers match your request', "Voilà des offres susceptibles de vous intéresser");
-
-const REQUEST_SEE_ONLINE = NewSentence('See Online', "Voir en ligne");
-
-//#endregion

@@ -2,36 +2,38 @@
 
 const functions = require('firebase-functions');
 const DialogflowApp = require('actions-on-google').DialogflowApp;
+var stringSimilarity = require('string-similarity');
 
-const MAP_GETOFFERS = "getOffers";
-const MAP_SELECTINGOFFER = "getOffers.fallback";
-const MAP_NEXTOFFER = "getOffers.nextOffer";
-const MAP_PREVIOUSOFFER = "getOffers.previousOffer";
-const MAP_PARSEROFFERS = "parseOffers";
+const MAP_GetOffers = "getOffers";
+const MAP_SelectingOffer = "getOffers.fallback";
+const MAP_NextOffer = "getOffers.nextOffer";
+const MAP_PreviousOffer = "getOffers.previousOffer";
+const MAP_ParseOffers = "parseOffers";
 
 //WARNING no uppercase in context names
-const CONTEXT_LIST_OFFERS = 'context_list_offers'
-const CONTEXT_OFFER_DETAIL = 'context_offer_detail'
+const CONTEXT_ListOffers = 'context_list_offers'
+const CONTEXT_OfferDetail = 'context_offer_detail'
 
-const CONTEXT_PARAMETER_Offers_presented = 'Offers_presented'
-const CONTEXT_PARAMETER_Offer_presented = 'Offer_presented'
+const CONTEXT_PARAMETER_OffersPresented = 'Offers_presented'
+const CONTEXT_PARAMETER_OfferPresented = 'Offer_presented'
 
-const CITY_Parameter = 'Ville';
-const REGION_Parameter = 'Region';
-const DEPT_Parameter = 'Departement';
-const TYPE_Parameter = 'Type';
+const PARAMETER_City = 'Ville';
+const PARAMETER_Region = 'Region';
+const PARAMETER_Dept = 'Departement';
+const PARAMETER_Type = 'Type';
 
+// Agent Called on DialogFlow Request
 exports.agent = functions.https.onRequest((request, response) => {
     var app = new DialogflowApp({
         request: request,
         response: response
     });
     var actionMap = new Map();
-    actionMap.set(MAP_GETOFFERS, getOffers);
-    actionMap.set(MAP_SELECTINGOFFER, showSelectedOffer);
-    actionMap.set(MAP_NEXTOFFER, showNextOffer);
-    actionMap.set(MAP_PREVIOUSOFFER, showPreviousOffer);
-    actionMap.set(MAP_PARSEROFFERS, updateAllOffers);
+    actionMap.set(MAP_GetOffers, getOffers);
+    actionMap.set(MAP_SelectingOffer, showSelectedOffer);
+    actionMap.set(MAP_NextOffer, showNextOffer);
+    actionMap.set(MAP_PreviousOffer, showPreviousOffer);
+    actionMap.set(MAP_ParseOffers, updateAllOffers);
     let context = app.getContexts();
     app.handleRequest(actionMap);
 })
@@ -43,21 +45,24 @@ exports.agent = functions.https.onRequest((request, response) => {
 
 //#region GETOFFERS
 
+// Function called when asking for offers in a city for exemple
 function getOffers(app) {
-    var city = app.getArgument(CITY_Parameter);
-    var region = app.getArgument(REGION_Parameter);
-    var dept = app.getArgument(DEPT_Parameter);
-    var type = app.getArgument(TYPE_Parameter);
+    var city = app.getArgument(PARAMETER_City);
+    var region = app.getArgument(PARAMETER_Region);
+    var dept = app.getArgument(PARAMETER_Dept);
+    var type = app.getArgument(PARAMETER_Type);
 
-    if (!city && !region && !dept && !type){
+    if (!city && !region && !dept && !type) {
         app.ask(RESPONSE_NOT_ENOUGH_INFO)
     }
 
+    //Getting data from database
     dataGetter(city, dept, region, type)
         .catch(err => {
             console.log(err);
         })
         .then(res => {
+            //There is a different output if only audio is available
             if (app.hasSurfaceCapability(app.SurfaceCapabilities.SCREEN_OUTPUT)) {
                 handleAnswerOnScreen(res, app);
             } else if (app.hasSurfaceCapability(app.SurfaceCapabilities.AUDIO_OUTPUT)) {
@@ -67,6 +72,7 @@ function getOffers(app) {
 }
 //#region list offers
 
+//If a screen is available
 function handleAnswerOnScreen(res, app) {
     const lang = app.getUserLocale();
     if (res.length == 0) {
@@ -79,7 +85,6 @@ function handleAnswerOnScreen(res, app) {
         answerWithList(app, res);
     } else if (res.length > 30) {
         app.ask(RESPONSE_TOO_MANY_OFFERS[lang]);
-        // TODO help narrow research
     }
 }
 
@@ -92,14 +97,14 @@ function answerWithCarousel(app, listOffers) {
     });
 
     let parameters = {};
-    parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
-    app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+    parameters[CONTEXT_PARAMETER_OffersPresented] = listOffers;
+    app.setContext(CONTEXT_ListOffers, 5, parameters)
 
     app.askWithCarousel(
         app.buildRichResponse()
-            .addSimpleResponse(RESPONSE_THOSE_OFFERS_MATCH[lang]),
+        .addSimpleResponse(RESPONSE_THOSE_OFFERS_MATCH[lang]),
         app.buildCarousel()
-            .addItems(items)
+        .addItems(items)
     );
 }
 
@@ -112,12 +117,12 @@ function answerWithList(app, listOffers) {
     });
 
     let parameters = {};
-    parameters[CONTEXT_PARAMETER_Offers_presented] = listOffers;
-    app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+    parameters[CONTEXT_PARAMETER_OffersPresented] = listOffers;
+    app.setContext(CONTEXT_ListOffers, 5, parameters)
 
     app.askWithList(RESPONSE_THOSE_OFFERS_MATCH[lang],
         app.buildList()
-            .addItems(items)
+        .addItems(items)
     );
 }
 
@@ -127,50 +132,66 @@ function answerWithList(app, listOffers) {
 
 //#region SHOWSELECTEDOFFER NEXT PREVIOUS
 
+//Showing only one offer
+//fromList tells whether we show this offer out of a list of offers or as a standalone offer
 function showOneOffer(app, offer, sentence, fromList = false) {
     const lang = app.getUserLocale();
     var body = offer.Description.slice(0, 250).replace("\n", "  ") + "..."
 
     let parameters = {};
-    parameters[CONTEXT_PARAMETER_Offer_presented] = offer;
-    app.setContext(CONTEXT_OFFER_DETAIL, 2, parameters)
+    parameters[CONTEXT_PARAMETER_OfferPresented] = offer;
+    app.setContext(CONTEXT_OfferDetail, 2, parameters)
 
     if (fromList) {
         let parameters = {};
-        parameters[CONTEXT_PARAMETER_Offers_presented] = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-        app.setContext(CONTEXT_LIST_OFFERS, 5, parameters)
+        parameters[CONTEXT_PARAMETER_OffersPresented] = app.getContextArgument(CONTEXT_ListOffers, CONTEXT_PARAMETER_OffersPresented).value;
+        app.setContext(CONTEXT_ListOffers, 5, parameters)
     }
 
     app.ask(app.buildRichResponse()
-        .addSuggestions(fromList ? [REQUEST_PREVIOUS_OFFER[lang], REQUEST_NEXT_OFFER[lang]] : []) // TODO no next offer if end of list
+        .addSuggestions(fromList ? [REQUEST_PREVIOUS_OFFER[lang], REQUEST_NEXT_OFFER[lang]] : [])
         .addSimpleResponse(sentence)
         .addBasicCard(
-        app.buildBasicCard(body)
+            app.buildBasicCard(body)
             .setTitle(offer.Poste)
             .setSubtitle(offer.Contrat + ", " + offer.Ville)
             .addButton(REQUEST_SEE_ONLINE[lang], offer.url)
-            .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "sogeti")
+            .setImage("https://raw.githubusercontent.com/so-technology-watch/assistant-rh-sogeti/master/images/banner.jpg", "Sogeti_Logo")
         )
     );
 }
 
+//Triggers showOneOffer with the right offer from the list
 function showSelectedOffer(app) {
-    let offersPresented = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
+    const lang = app.getUserLocale();
+    let offersPresented = app.getContextArgument(CONTEXT_ListOffers, CONTEXT_PARAMETER_OffersPresented).value;
+    var titlesPresented = offersPresented.map(offer => {
+        return offer.Poste;
+    })
     let titleSelected = app.getSelectedOption();
 
-    var offerSelected = offersPresented.find(offer => {
-        return (offer.Poste == titleSelected);
-    })
+    if (titleSelected) {
+        const bestMatch = stringSimilarity.findBestMatch(titleSelected, titlesPresented).bestMatch;
+        if (bestMatch.rating > 0.7) {
 
-    const lang = app.getUserLocale();
+            var offerSelected = offersPresented.find(offer => {
+                return (offer.Poste == bestMatch.target);
+            })
 
-    showOneOffer(app, offerSelected, RESPONSE_THE_OFFER[lang], true);
+            showOneOffer(app, offerSelected, RESPONSE_THE_OFFER[lang], true);
+        } else {
+            app.ask(RESPONSE_OFFER_NOT_FOUND[lang]);
+        }
+    } else {
+        app.ask(RESPONSE_OFFER_NOT_FOUND[lang]);
+    }
 }
+
 
 function showNextOffer(app) {
     const lang = app.getUserLocale();
-    var offersPresented = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-    var offerPresented = app.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
+    var offersPresented = app.getContextArgument(CONTEXT_ListOffers, CONTEXT_PARAMETER_OffersPresented).value;
+    var offerPresented = app.getContextArgument(CONTEXT_OfferDetail, CONTEXT_PARAMETER_OfferPresented).value;
 
     var index = offersPresented.findIndex(offer => {
         return (offer.Poste == offerPresented.Poste)
@@ -187,8 +208,8 @@ function showNextOffer(app) {
 
 function showPreviousOffer(app) {
     const lang = app.getUserLocale();
-    var offersPresented = app.getContextArgument(CONTEXT_LIST_OFFERS, CONTEXT_PARAMETER_Offers_presented).value;
-    var offerPresented = app.getContextArgument(CONTEXT_OFFER_DETAIL, CONTEXT_PARAMETER_Offer_presented).value;
+    var offersPresented = app.getContextArgument(CONTEXT_ListOffers, CONTEXT_PARAMETER_OffersPresented).value;
+    var offerPresented = app.getContextArgument(CONTEXT_OfferDetail, CONTEXT_PARAMETER_OfferPresented).value;
 
     var index = offersPresented.findIndex(offer => {
         return (offer.Poste == offerPresented.Poste)
@@ -267,9 +288,9 @@ function dataGetter(city, dept, region, type) {
     return cleanCityDeptRegion(city, dept, region).then(cleanedPlace => {
         var query = datastore.createQuery("Offer")
             .filter('validated', '=', true)
-        query = cleanedPlace.city ? query.filter(CITY_Parameter, '=', cleanedPlace.city) : query
-        query = cleanedPlace.region ? query.filter(REGION_Parameter, '=', cleanedPlace.region) : query
-        query = cleanedPlace.dept ? query.filter(DEPT_Parameter, '=', cleanedPlace.dept) : query
+        query = cleanedPlace.city ? query.filter(PARAMETER_City, '=', cleanedPlace.city) : query
+        query = cleanedPlace.region ? query.filter(PARAMETER_Region, '=', cleanedPlace.region) : query
+        query = cleanedPlace.dept ? query.filter(PARAMETER_Dept, '=', cleanedPlace.dept) : query
         query = type ? query.filter('Contrat', '=', type) : query
 
         return datastore.runQuery(query)
@@ -298,6 +319,7 @@ function NewSentence(english, french) {
 }
 
 const RESPONSE_THE_OFFER = NewSentence('Here is the offer you want', "Voilà l'offre qui vous intéresse");
+const RESPONSE_OFFER_NOT_FOUND = NewSentence('Sorry, we could not find the offer you want', "Désolé, nous n'avons pas pu trouver l'offre que vous cherchez");
 
 const REQUEST_NEXT_OFFER = NewSentence('Next Offer', "Offre suivante");
 
@@ -798,4 +820,3 @@ function updateAllOffers() {
 
 
 //#endregion
-

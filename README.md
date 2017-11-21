@@ -1,22 +1,45 @@
 # assistant-rh-sogeti
 
-Start Google Cloud Emulator
+## Development Setup
 
-`functions start`
+``` bash
+# go to functions' folder
+cd functions
 
-Deploy the agent
+# install modules
+npm i
 
-`functions deploy agent --trigger-http`
+# setup firebase
+npm install -g firebase-tools
+firebase login
 
-Export port 8010 online
+# Start firebase functions emulator
+cd ..
+firebase serve --only functions
 
-`ngrok http 8010`
+# Expose port 5000 online
+ngrok http 5000
+```
 
-Copy forwarding https to console.API.ai
+
+Copy the https link to console.dialogflow.com
 and add `/us-central1/agent`
 
-Follow activity on http://127.0.0.1:4040
+Follow the API activity on http://127.0.0.1:4040
 
-Debug with `functions debug agent`
 
-https://us-central1-assistant-rh-sogeti.cloudfunctions.net/agent
+## Deployment Setup
+
+``` bash
+# install modules
+cd functions
+npm i
+cd ..
+
+# setup firebase
+npm install -g firebase-tools
+firebase login
+
+# deploy firebase functions
+firebase deploy --only functions
+```

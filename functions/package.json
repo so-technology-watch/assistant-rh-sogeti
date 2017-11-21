@@ -9,6 +9,6 @@
     "firebase-functions": "latest",
     "firebase-tools": "latest",
     "request": "latest",
-    "string-similarity": "^1.2.0"
+    "string-similarity": "latest"
   }
 }

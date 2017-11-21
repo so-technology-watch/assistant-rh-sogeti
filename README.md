@@ -5,23 +5,21 @@ Ce projet correspond au webhook du projet assistant-rh-sogeti de dialogflow. Il 
 ## Development Setup
 
 ``` bash
-# go to functions' folder
-cd functions
-
 # install modules
+cd functions
 npm i
+cd ..
 
 # setup firebase
 npm install -g firebase-tools
 firebase login
 
-# Start firebase functions emulator
-cd ..
-firebase serve --only functions
-
 #setup gcloud (for the parser only)
 npm install -g gcloud
 gcloud auth application-default login
+
+# Start firebase functions emulator
+firebase serve --only functions
 
 # Expose port 5000 online
 ngrok http 5000

@@ -19,6 +19,10 @@ firebase login
 cd ..
 firebase serve --only functions
 
+#setup gcloud (for the parser only)
+npm install -g gcloud
+gcloud auth application-default login
+
 # Expose port 5000 online
 ngrok http 5000
 ```
@@ -41,10 +45,6 @@ cd ..
 # setup firebase
 npm install -g firebase-tools
 firebase login
-
-#setup gcloud (for the parser only)
-npm install -g gcloud
-gcloud auth application-default login
 
 # deploy firebase functions
 firebase deploy --only functions

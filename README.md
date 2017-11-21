@@ -1,5 +1,7 @@
 # assistant-rh-sogeti
 
+Ce projet correspond au webhook du projet assistant-rh-sogeti de dialogflow. Il permet d'interroger la base de données des offres RH de Sogeti pour répondre aux demandes des utilisateurs. Il permet aussi de parser le site de Sogeti pour récupérer la liste des offres.
+
 ## Development Setup
 
 ``` bash
@@ -39,6 +41,10 @@ cd ..
 # setup firebase
 npm install -g firebase-tools
 firebase login
+
+#setup gcloud (for the parser only)
+npm install -g gcloud
+gcloud auth application-default login
 
 # deploy firebase functions
 firebase deploy --only functions

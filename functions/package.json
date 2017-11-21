@@ -5,8 +5,8 @@
     "@google-cloud/datastore": "latest",
     "actions-on-google": "latest",
     "cheerio": "latest",
-    "firebase-admin": "latest",
-    "firebase-functions": "latest",
+    "firebase-admin": "^5.4.2",
+    "firebase-functions": "^0.7.3",
     "firebase-tools": "latest",
     "request": "latest",
     "string-similarity": "latest"

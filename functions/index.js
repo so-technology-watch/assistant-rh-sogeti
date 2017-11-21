@@ -373,6 +373,7 @@ function getHtml(url) {
     })
 }
 
+// Gets the list of all the offers' urls
 function getOffersUrl() {
 
     return getOffersPages()
@@ -400,6 +401,7 @@ function getOffersUrl() {
 
 }
 
+//Get the urls of all the pages containing offers
 function getOffersPages() {
 
     return getHtml(URL_RH_website)
@@ -440,6 +442,7 @@ const VILLE = "Ville";
 const DEPARTEMENT = "Departement";
 const REGION = "Region";
 
+// The Short key is what we store, the long version is what's on the website
 var SHORT_KEY = {};
 [CONTRAT, DESCRIPTION, POSTE, LIEU, LOCALISATION, METIER, PROFIL, URL, VILLE, DEPARTEMENT, REGION]
 .forEach(key => {
@@ -477,6 +480,7 @@ function IsLongKey(key) {
 
 var compt = 0;
 
+// Object containing all the attributes of an offer, initiated by the url of the offer
 class Offer {
     constructor(url) {
         this.url = URL_RH_root + url;
@@ -491,6 +495,7 @@ class Offer {
         })
     }
 
+    // Gets all the attributes of the offer from the html
     getContent() {
         if (this.html) {
             var $ = cheerio.load(this.html);
@@ -521,6 +526,7 @@ class Offer {
         }
     }
 
+    // An offer is valid if it has a city attribute
     validateOffer() {
         if (this[VILLE]) {
             this.validated = true;
@@ -531,6 +537,7 @@ class Offer {
     }
 }
 
+// General function to interrogate the geo API
 function cleanApi(url) {
     return getHtml(url)
         .catch(err => {
@@ -606,7 +613,7 @@ function cleanLocalisation(localisation) {
         })
 }
 
-
+// Cleans the values of the attributes from the website
 function cleanValue(key, value) {
     if (key == LIEU) {
         return cleanCity(value)
@@ -649,6 +656,7 @@ function cleanValue(key, value) {
 
 }
 
+// Tool for the html parser to get the value of any object
 function getValueTag(el) {
     var type = typeof (el);
     var value = "";
@@ -664,6 +672,7 @@ function getValueTag(el) {
     return value.trim();
 }
 
+// Tool for the parser to get the closest sibling with a value
 function getNextValue(el) {
     var next = el.next;
     var value = "";
@@ -680,6 +689,7 @@ function getNextValue(el) {
     return value.trim();
 }
 
+// fill up the attributes, html and content of the offers in the list
 function getOffersData(list_Offers) {
 
     console.log(list_Offers.length + " offres récupérées");
@@ -703,6 +713,7 @@ function getOffersData(list_Offers) {
 
 }
 
+// save the offer in the datastore
 function saveOffer(offer) {
     const kind = "Offer";
     const OfferKey = datastore.key(kind);
@@ -747,6 +758,7 @@ function saveAllOffers() {
         });
 }
 
+// Gets the existing offers in the datastore
 function getAllExistingOffers() {
     var query = datastore.createQuery("Offer");
 
@@ -768,6 +780,7 @@ function getAllExistingKeys(offers) {
     })
 }
 
+// Clears the datastore
 function deleteAllOffers() {
     getAllExistingOffers().then(existingOffers => {
         getAllExistingKeys(existingOffers).forEach(key => {
@@ -791,6 +804,7 @@ function deleteOffers(list) {
     })
 }
 
+// Gets the list of all the new offers, not already in the datastore
 function getNewOffers() {
     return getAllExistingOffers().then(existingOffers => {
         const existingUrls = getAllExistingUrls(existingOffers);

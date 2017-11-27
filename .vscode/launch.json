@@ -15,7 +15,8 @@
             "request": "attach",
             "name": "Attach",
             "port": 5858,
-            "preLaunchTask": "functions debug"
+            "preLaunchTask": "functions debug",
+            "protocol": "legacy"
         }
     ]
 }

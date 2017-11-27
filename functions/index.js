@@ -68,13 +68,16 @@ function getOffers(app) {
             } else if (app.hasSurfaceCapability(app.SurfaceCapabilities.AUDIO_OUTPUT)) {
                 handleAnswerNoScreen(res, app);
             }
+            else {
+                handleNotAOG(res,app);
+            }
         })
 }
 //#region list offers
 
 //If a screen is available
 function handleAnswerOnScreen(res, app) {
-    const lang = app.getUserLocale();
+    const lang = app.getUserLocale() ? lang : "fr-FR";
     if (res.length == 0) {
         app.ask(RESPONSE_NO_OFFER_MATCHING[lang]);
     } else if (res.length == 1) {
@@ -89,7 +92,7 @@ function handleAnswerOnScreen(res, app) {
 }
 
 function answerWithCarousel(app, listOffers) {
-    const lang = app.getUserLocale();
+    const lang = app.getUserLocale() ? lang : "fr-FR";
     var items = listOffers.map(offer => {
         return app.buildOptionItem(offer.Poste, [])
             .setTitle(offer.Poste)
@@ -109,7 +112,7 @@ function answerWithCarousel(app, listOffers) {
 }
 
 function answerWithList(app, listOffers) {
-    const lang = app.getUserLocale();
+    const lang = app.getUserLocale() ? lang : "fr-FR";
     var items = listOffers.map(offer => {
         return app.buildOptionItem(offer.Poste, [offer.url])
             .setTitle(offer.Poste)
@@ -135,7 +138,7 @@ function answerWithList(app, listOffers) {
 //Showing only one offer
 //fromList tells whether we show this offer out of a list of offers or as a standalone offer
 function showOneOffer(app, offer, sentence, fromList = false) {
-    const lang = app.getUserLocale();
+    const lang = app.getUserLocale() ? lang : "fr-FR";
     var body = offer.Description.slice(0, 250).replace("\n", "  ") + "..."
 
     let parameters = {};
@@ -163,7 +166,7 @@ function showOneOffer(app, offer, sentence, fromList = false) {
 
 //Triggers showOneOffer with the right offer from the list
 function showSelectedOffer(app) {
-    const lang = app.getUserLocale();
+    const lang = app.getUserLocale() ? lang : "fr-FR";
     let offersPresented = app.getContextArgument(CONTEXT_ListOffers, CONTEXT_PARAMETER_OffersPresented).value;
     var titlesPresented = offersPresented.map(offer => {
         return offer.Poste;
@@ -189,7 +192,7 @@ function showSelectedOffer(app) {
 
 
 function showNextOffer(app) {
-    const lang = app.getUserLocale();
+    const lang = app.getUserLocale() ? lang : "fr-FR";
     var offersPresented = app.getContextArgument(CONTEXT_ListOffers, CONTEXT_PARAMETER_OffersPresented).value;
     var offerPresented = app.getContextArgument(CONTEXT_OfferDetail, CONTEXT_PARAMETER_OfferPresented).value;
 
@@ -207,7 +210,7 @@ function showNextOffer(app) {
 }
 
 function showPreviousOffer(app) {
-    const lang = app.getUserLocale();
+    const lang = app.getUserLocale() ? lang : "fr-FR";
     var offersPresented = app.getContextArgument(CONTEXT_ListOffers, CONTEXT_PARAMETER_OffersPresented).value;
     var offerPresented = app.getContextArgument(CONTEXT_OfferDetail, CONTEXT_PARAMETER_OfferPresented).value;
 
@@ -227,9 +230,8 @@ function showPreviousOffer(app) {
 //#endregion
 
 //#region SPEAKING API
-
 function handleAnswerNoScreen(res, app) {
-    const lang = app.getUserLocale();
+    const lang = app.getUserLocale() ? lang : "fr-FR";
 
     if (res.length == 0) {
         app.ask(addSpeak("<p><s>No offers matching your request.</s> <s>Do you want to ask something else ?</s>"));
@@ -270,6 +272,31 @@ function tellOneOffer(app, offer, addDescription = false) {
     return addSpeak(answer);
 }
 
+//#endregion
+
+//#region NOT GOOGLE ASSISTANT
+function handleNotAOG(res, app) {
+    answerWithListNotAOG(app, res);
+}
+
+function answerWithListNotAOG(app, listOffers) {
+    const lang = "fr-FR";
+    var items = listOffers.map(offer => {
+        return app.buildOptionItem(offer.Poste, [offer.url])
+            .setTitle(offer.Poste)
+            .setDescription(offer.Contrat + ", " + offer.Ville);
+    });
+
+    let parameters = {};
+    parameters[CONTEXT_PARAMETER_OffersPresented] = listOffers;
+    app.setContext(CONTEXT_ListOffers, 5, parameters)
+
+
+    app.askWithList(RESPONSE_THOSE_OFFERS_MATCH[lang],
+        app.buildList()
+            .addItems(items)
+    );
+}
 //#endregion
 
 //#region DATA GETTER FROM DATASTORE

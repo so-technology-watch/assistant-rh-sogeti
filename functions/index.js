@@ -67,9 +67,8 @@ function getOffers(app) {
                 handleAnswerOnScreen(res, app);
             } else if (app.hasSurfaceCapability(app.SurfaceCapabilities.AUDIO_OUTPUT)) {
                 handleAnswerNoScreen(res, app);
-            }
-            else {
-                handleNotAOG(res,app);
+            } else {
+                handleNotAOG(res, app);
             }
         })
 }
@@ -294,7 +293,7 @@ function answerWithListNotAOG(app, listOffers) {
 
     app.askWithList(RESPONSE_THOSE_OFFERS_MATCH[lang],
         app.buildList()
-            .addItems(items)
+        .addItems(items)
     );
 }
 //#endregion
@@ -311,27 +310,86 @@ const datastore = Datastore({
     projectId: projectId
 });
 
-function dataGetter(city, dept, region, type) {
-    return cleanCityDeptRegion(city, dept, region).then(cleanedPlace => {
-        var query = datastore.createQuery("Offer")
-            .filter('validated', '=', true)
-        query = cleanedPlace.city ? query.filter(PARAMETER_City, '=', cleanedPlace.city) : query
-        query = cleanedPlace.region ? query.filter(PARAMETER_Region, '=', cleanedPlace.region) : query
-        query = cleanedPlace.dept ? query.filter(PARAMETER_Dept, '=', cleanedPlace.dept) : query
-        query = type ? query.filter('Contrat', '=', type) : query
+function dataGetter(cities, depts, regions, type) {
+    return cleanCitiesDeptsRegions(cities, depts, regions).then(cleanedPlace => {
+        promisesQueries = []
 
-        return datastore.runQuery(query)
-            .then(res => {
-                return res[0];
+        cleanedPlace.cities.forEach(city => {
+            const query = datastore.createQuery("Offer")
+                .filter('validated', '=', true)
+            if (type) {
+                query.filter('Contrat', '=', type)
+            }
+            promisesQueries.push(datastore.runQuery(query.filter(PARAMETER_City, '=', city))
+                .then(res => {
+                    return res[0];
+                }))
+        })
+        cleanedPlace.depts.forEach(dept => {
+            const query = datastore.createQuery("Offer")
+                .filter('validated', '=', true)
+            if (type) {
+                query.filter('Contrat', '=', type)
+            }
+            promisesQueries.push(datastore.runQuery(query.filter(PARAMETER_Dept, '=', dept))
+                .then(res => {
+                    return res[0];
+                }))
+        })
+        cleanedPlace.regions.forEach(region => {
+            const query = datastore.createQuery("Offer")
+                .filter('validated', '=', true)
+            if (type) {
+                query.filter('Contrat', '=', type)
+            }
+            promisesQueries.push(datastore.runQuery(query.filter(PARAMETER_Region, '=', region))
+                .then(res => {
+                    return res[0];
+                }))
+        })
+
+        return Promise.all(promisesQueries)
+            .then(results => {
+                return [].concat.apply([], results)
             })
     })
 
 };
 
+function cleanCitiesDeptsRegions(cities, depts, regions) {
+    var promises = []
+    var values = {
+        cities: [],
+        depts: [],
+        regions: []
+    }
+    cities.forEach(city => {
+        promises.push(
+            cleanCity(city)
+            .then(cityCleaned => {
+                values.cities.push(cityCleaned)
+            }))
+    });
+    depts.forEach(dept => {
+        promises.push(cleanDept(dept)
+            .then(deptCleaned => {
+                values.depts.push(deptCleaned)
+            }))
+    });
+    regions.forEach(region => {
+        promises.push(cleanRegion(region)
+            .then(regionCleaned => {
+                values.regions.push(regionCleaned)
+            }))
+    });
+    return Promise.all(promises).then(list => {
+        return values;
+    })
+}
+
 //#endregion
 
 //#region LANGAGE MANAGEMENT
-
 
 const FR_FR = "fr-FR";
 const EN_GB = "en-GB";
@@ -368,8 +426,7 @@ const REQUEST_SEE_ONLINE = NewSentence('See Online', "Voir en ligne");
 
 //#endregion
 
-//#endregion CONVERSATION API
-
+//#endregion
 
 //#region NEW OFFERS PARSER
 
@@ -599,6 +656,7 @@ function cleanDept(dept) {
 function cleanCityDeptRegion(city, dept, region) {
     var promises = []
     var values = {}
+
     promises.push(
         cleanCity(city)
         .then(cityCleaned => {

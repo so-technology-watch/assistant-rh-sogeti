@@ -4,6 +4,8 @@ const functions = require('firebase-functions');
 const DialogflowApp = require('actions-on-google').DialogflowApp;
 var stringSimilarity = require('string-similarity');
 
+const lang = "fr-FR";
+
 const MAP_GetOffers = "getOffers";
 const MAP_SelectingOffer = "getOffers.fallback";
 const MAP_NextOffer = "getOffers.nextOffer";
@@ -76,7 +78,6 @@ function getOffers(app) {
 
 //If a screen is available
 function handleAnswerOnScreen(res, app) {
-    const lang = app.getUserLocale();
     if (res.length == 0) {
         app.ask(RESPONSE_NO_OFFER_MATCHING[lang]);
     } else if (res.length == 1) {
@@ -91,7 +92,6 @@ function handleAnswerOnScreen(res, app) {
 }
 
 function answerWithCarousel(app, listOffers) {
-    const lang = app.getUserLocale();
     var items = listOffers.map(offer => {
         return app.buildOptionItem(offer.Poste, [])
             .setTitle(offer.Poste)
@@ -111,7 +111,6 @@ function answerWithCarousel(app, listOffers) {
 }
 
 function answerWithList(app, listOffers) {
-    const lang = app.getUserLocale();
     var items = listOffers.map(offer => {
         return app.buildOptionItem(offer.Poste, [offer.url])
             .setTitle(offer.Poste)
@@ -137,7 +136,6 @@ function answerWithList(app, listOffers) {
 //Showing only one offer
 //fromList tells whether we show this offer out of a list of offers or as a standalone offer
 function showOneOffer(app, offer, sentence, fromList = false) {
-    const lang = app.getUserLocale();
     var body = offer.Description.slice(0, 250).replace("\n", "  ") + "..."
 
     let parameters = {};
@@ -165,7 +163,6 @@ function showOneOffer(app, offer, sentence, fromList = false) {
 
 //Triggers showOneOffer with the right offer from the list
 function showSelectedOffer(app) {
-    const lang = app.getUserLocale();
     let offersPresented = app.getContextArgument(CONTEXT_ListOffers, CONTEXT_PARAMETER_OffersPresented).value;
     var titlesPresented = offersPresented.map(offer => {
         return offer.Poste;
@@ -191,7 +188,6 @@ function showSelectedOffer(app) {
 
 
 function showNextOffer(app) {
-    const lang = app.getUserLocale();
     var offersPresented = app.getContextArgument(CONTEXT_ListOffers, CONTEXT_PARAMETER_OffersPresented).value;
     var offerPresented = app.getContextArgument(CONTEXT_OfferDetail, CONTEXT_PARAMETER_OfferPresented).value;
 
@@ -209,7 +205,6 @@ function showNextOffer(app) {
 }
 
 function showPreviousOffer(app) {
-    const lang = app.getUserLocale();
     var offersPresented = app.getContextArgument(CONTEXT_ListOffers, CONTEXT_PARAMETER_OffersPresented).value;
     var offerPresented = app.getContextArgument(CONTEXT_OfferDetail, CONTEXT_PARAMETER_OfferPresented).value;
 
@@ -230,7 +225,6 @@ function showPreviousOffer(app) {
 
 //#region SPEAKING API
 function handleAnswerNoScreen(res, app) {
-    const lang = app.getUserLocale();
 
     if (res.length == 0) {
         app.ask(addSpeak("<p><s>No offers matching your request.</s> <s>Do you want to ask something else ?</s>"));
@@ -279,7 +273,6 @@ function handleNotAOG(res, app) {
 }
 
 function answerWithListNotAOG(app, listOffers) {
-    const lang = "fr-FR";
     var items = listOffers.map(offer => {
         return app.buildOptionItem(offer.Poste, [offer.url])
             .setTitle(offer.Poste)
@@ -305,7 +298,7 @@ const URL_RH_website = "https://sogetifrance-recrute.talent-soft.com/offre-de-em
 const URL_RH_root = "https://sogetifrance-recrute.talent-soft.com";
 
 const Datastore = require('@google-cloud/datastore');
-const projectId = 'assistant-rh-sogeti';
+const projectId = 'assistant-rh-sogeti-8a30a';
 const datastore = Datastore({
     projectId: projectId
 });
@@ -808,7 +801,7 @@ function saveOffer(offer) {
     };
     Object.keys(offer).forEach(key => {
         if (IsShortKey(key) && offer[key] != undefined) {
-            if (key == DESCRIPTION_SHORT || key == PROFIL) {
+            if (key == "Description" || key == "Profil") {
                 entity.data.push({
                     name: key,
                     value: offer[key],

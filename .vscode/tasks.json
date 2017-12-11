@@ -4,9 +4,9 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "taskName": "functions debug",
+            "label": "functions debug",
             "type": "shell",
-            "command": "functions debug agent"
+            "command": "nvs 6.11.5 | functions debug agent"
         }
     ]
 }

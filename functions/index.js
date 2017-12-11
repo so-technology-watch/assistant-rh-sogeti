@@ -910,5 +910,56 @@ function updateAllOffers() {
     })
 }
 
+//#region saving entities
+var http = require("https");
+
+var options = {
+    "method": "POST",
+    "hostname": "api.dialogflow.com",
+    "port": null,
+    "path": "/v1/entities?v=20150910",
+    "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "authorization": "Bearer 9b33cf29903f46cab467342277f1c544"
+    }
+};
+
+
+function addEntity(entity) {
+    var req = http.request(options, function (res) {
+        var chunks = [];
+
+        res.on("data", function (chunk) {
+            chunks.push(chunk);
+        });
+
+        res.on("end", function () {
+            var body = Buffer.concat(chunks);
+            console.log(body.toString());
+        });
+    });
+
+    req.write(JSON.stringify(entity))
+
+    req.end();
+}
+
+class Entity {
+    constructor(name, entries = []) {
+        this.name = name,
+            this.entries = entries
+    }
+
+    add(value, synonyms = []) {
+        this.entries.push({
+            value: value,
+            synonyms: synonyms
+        })
+        return this
+    }
+}
+
+//#endregion
+
 
 //#endregion

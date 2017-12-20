@@ -307,6 +307,18 @@ function dataGetter(cities, depts, regions, type) {
     return cleanCitiesDeptsRegions(cities, depts, regions).then(cleanedPlace => {
         promisesQueries = []
 
+        if (cleanedPlace.cities.length < 1 && cleanedPlace.depts.length < 1 && cleanedPlace.regions.length < 1) {
+            const query = datastore.createQuery("Offer")
+                .filter('validated', '=', true)
+            if (type) {
+                query.filter('Contrat', '=', type)
+            }
+            promisesQueries.push(datastore.runQuery(query)
+                .then(res => {
+                    return res[0];
+                }))
+        }
+
         cleanedPlace.cities.forEach(city => {
             const query = datastore.createQuery("Offer")
                 .filter('validated', '=', true)
